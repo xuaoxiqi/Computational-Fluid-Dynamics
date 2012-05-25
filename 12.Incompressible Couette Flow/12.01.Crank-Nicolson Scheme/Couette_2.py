@@ -68,6 +68,7 @@ def Couette():
     plt.ylim(0.0,1.0)
     plt.title('Incompressible Couette Flow'+'   nt='+str(nt)+'$\Delta t$')
     plt.legend(prop={"size":12})
+    plt.savefig('2_Couette')
     plt.show()
     
     return 

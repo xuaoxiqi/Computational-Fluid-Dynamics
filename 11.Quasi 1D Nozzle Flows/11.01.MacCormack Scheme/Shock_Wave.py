@@ -156,6 +156,7 @@ def mac():
     plt.ylabel(r'$\rho$')   
     plt.title('Quasi One_Dimensional Nozzle Flows'+'(Density)')
     plt.legend(prop={"size":12})
+    plt.savefig('Shock_rho')
     plt.show()
     
     plt.plot(X,Te,'ro-',label="Numerical Solution",linewidth=1)
@@ -164,6 +165,7 @@ def mac():
     plt.ylabel(r'$T$')   
     plt.title('Quasi One_Dimensional Nozzle Flows'+'(Temperature)')
     plt.legend(prop={"size":12})
+    plt.savefig('Shock_T')
     plt.show()
 
     plt.plot(X,P,'ro-',label="Numerical Solution",linewidth=1)
@@ -172,6 +174,7 @@ def mac():
     plt.ylabel(r'$P$')   
     plt.title('Quasi One_Dimensional Nozzle Flows'+'(Pressure)')
     plt.legend(prop={"size":12})
+    plt.savefig('Shock_P')
     plt.show()
 
     plt.plot(X,Ma,'ro-',label="Numerical Solution",linewidth=1)
@@ -180,6 +183,7 @@ def mac():
     plt.ylabel(r'$Ma$')   
     plt.title('Quasi One_Dimensional Nozzle Flows'+'(Mach number)')
     plt.legend(prop={"size":12})
+    plt.savefig('Shock_Ma')
     plt.show()
     
     return
