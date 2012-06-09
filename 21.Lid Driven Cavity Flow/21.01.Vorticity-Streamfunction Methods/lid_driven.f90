@@ -16,9 +16,9 @@
 !!!                Stationary Wall
 
 !!!    u(i,j), v(i,j)-------------velocity function
-!!!    Phi(i,j)-------------------stream function
+!!!    Psi(i,j)-------------------stream function
 !!!    vor(i,j)-------------------vorticity function
-!!!    RPhi(i,j)------------------Phi^{n+1}_{i,j} - Phi^{n}_{i,j}
+!!!    RPsi(i,j)------------------Psi^{n+1}_{i,j} - Psi^{n}_{i,j}
 !!!    RVOR(i,j)------------------(vor^{n+1}_{i,j}-vor^{n}_{i,j})/dt
 
        program main
@@ -26,53 +26,53 @@
        integer, parameter :: N=201, M=201
        integer :: i, j, itc
        real :: dx, dy, Re, dt, eps, errvor, errphi
-       real :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), Phi(N,M), RPhi(N,M)
+       real :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), Psi(N,M), RPsi(N,M)
 
 !!! input initial data
        Re = 1000
        dx = 1./(N-1)
        dy = 1./(M-1)
        dt = 1e-4
-       eps = 1e-5
+       eps = 1e-3
        itc = 0
 
        write(*,*) 'This program sloves Lid Driven Cavity Flow problem using Vorticity-Streamfunction Methods'
 !!! set up initial flow field
-       call initial(N,M,dx,dy,X,Y,u,v,Phi,vor,RVOR,RPhi)
+       call initial(N,M,dx,dy,X,Y,u,v,Psi,vor,RVOR,RPsi)
 
        do
 !!! solve vorticity equation
               call solvor(N,M,dx,dy,Re,dt,u,v,vor,RVOR)
 
 !!! solve stream function equation
-              call solphi(N,M,dx,dy,vor,Phi,RPhi)
+              call solphi(N,M,dx,dy,vor,Psi,RPsi)
 
 !!! updates the values of sream function at boundary points
-              call bcphi(N,M,dy,Phi)
+              call bcphi(N,M,dy,Psi)
 
 !!! updates the boundary condition for vorticity
-              call bcvor(N,M,dx,dy,vor,Phi)
+              call bcvor(N,M,dx,dy,vor,Psi)
 
 !!! compute the velocity components u and v
-              call caluv(N,M,dx,dy,Phi,u,v)
+              call caluv(N,M,dx,dy,Psi,u,v)
 
               errvor = 0.0
               errphi = 0.0
               do i=1,N
                      do j=1,M
                             if(ABS(RVOR(i,j))*dt.GT.errvor) errvor = ABS(RVOR(i,j))*dt
-                            if(ABS(RPhi(i,j)).GT.errphi) errphi = ABS(RPhi(i,j))
+                            if(ABS(RPsi(i,j)).GT.errphi) errphi = ABS(RPsi(i,j))
                      enddo
               enddo
-              !print*, 'errvor=',errvor
-              !print*, 'errphi=',errphi
+              print*, 'errvor=',errvor
+              print*, 'errphi=',errphi
 
               if((MAX(errvor,errphi).LT.eps).AND.(itc.GT.1)) then
                      write(*,*) 'Results meet convergence criteria!'
                      exit
               else
                      itc = itc+1
-                     !print*,'Iterative times=',itc
+                     print*,'Iterative times=',itc
                      cycle
               endif
 
@@ -89,13 +89,13 @@
        write(02,103) N, M
        do j=1,M
               do i = 1,N
-                     write(02,100) X(i), Y(j), u(i,j), v(i,j), Phi(i,j), VOR(i,j)
+                     write(02,100) X(i), Y(j), u(i,j), v(i,j), Psi(i,j), VOR(i,j)
               enddo
        enddo
 
 100    format(2x,10(e12.6,'      '))
 101    format('Title="Driven Cavity Flow"')
-102    format('Variables=x,y,u,v,Phi,VOR')
+102    format('Variables=x,y,u,v,Psi,VOR')
 103    format('zone',1x'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
        close(02)
@@ -106,11 +106,11 @@
 
 
 
-       subroutine initial(N,M,dx,dy,X,Y,u,v,Phi,vor,RVOR,RPhi)
+       subroutine initial(N,M,dx,dy,X,Y,u,v,Psi,vor,RVOR,RPsi)
        implicit none
        integer :: i, j, N, M
        real :: dx, dy
-       real :: X(N), Y(M), u(N,M), v(N,M), Phi(N,M), vor(N,M), RVOR(N,M), RPhi(N,M)
+       real :: X(N), Y(M), u(N,M), v(N,M), Psi(N,M), vor(N,M), RVOR(N,M), RPsi(N,M)
 
        do i=1,N
               X(i) = (i-1)*dx
@@ -123,10 +123,10 @@
               do j=1,M
                      u(i,j) = 0.0
                      v(i,j) = 0.0!!!    u(i,j), v(i,j)------------velocity function
-                     Phi(i,j) = 0.0!!!    Phi(i,j)--------------------stream function
+                     Psi(i,j) = 0.0!!!    Psi(i,j)--------------------stream function
                      vor(i,j) = 0.0!!!    vor(i,j)------------------vorticity function
                      RVOR(i,j) = 0.0!!!    RVOR(i,j)-------------(vor^{n+1}_{i,j}-vor^{n}_{i,j})/dt
-                     RPhi(i,j) = 0.0!!!    RPhi(i,j)--------------Phi^{n+1}_{i,j} - Phi^{n}_{i,j}
+                     RPsi(i,j) = 0.0!!!    RPsi(i,j)--------------Psi^{n+1}_{i,j} - Psi^{n}_{i,j}
               enddo
        enddo
 
@@ -162,11 +162,11 @@
 
 
 
-       subroutine solphi(N,M,dx,dy,vor,Phi,RPhi)
+       subroutine solphi(N,M,dx,dy,vor,Psi,RPsi)
        implicit none
        integer :: i, j ,N, M
        real :: alpha, dx, dy, aw, as, ap
-       real :: vor(N,M), Phi(N,M), RPhi(N,M), S(N,M)
+       real :: vor(N,M), Psi(N,M), RPsi(N,M), S(N,M)
 
        aw = 1.0/dx/dx
        as = 1.0/dy/dy
@@ -174,28 +174,28 @@
 
        do i=3,N-2
               do j=3,M-2
-                     S(i,j)=vor(i,j)-(Phi(i+1,j)-2*Phi(i,j)+Phi(i-1,j))/dx/dx-(Phi(i,j+1)-2*Phi(i,j)+Phi(i,j-1))/dy/dy
+                     S(i,j)=vor(i,j)-(Psi(i+1,j)-2*Psi(i,j)+Psi(i-1,j))/dx/dx-(Psi(i,j+1)-2*Psi(i,j)+Psi(i,j-1))/dy/dy
               enddo
        enddo
 
        do j=1,M
-              RPhi(1,j) = 0.0
-              RPhi(2,j) = 0.0
-              RPhi(N,j) = 0.0
-              RPhi(N-1,j) = 0.0
+              RPsi(1,j) = 0.0
+              RPsi(2,j) = 0.0
+              RPsi(N,j) = 0.0
+              RPsi(N-1,j) = 0.0
        enddo
        do i=1,N
-              RPhi(i,1) = 0.0
-              RPhi(i,2) = 0.0
-              RPhi(i,M) = 0.0
-              RPhi(i,M-1) = 0.0
+              RPsi(i,1) = 0.0
+              RPsi(i,2) = 0.0
+              RPsi(i,M) = 0.0
+              RPsi(i,M-1) = 0.0
        enddo
 
        alpha = 1.5       !alpha is ralaxtion factor
        do i=3,N-2
               do j=3,M-2
-                     RPhi(i,j)=(S(i,j)-aw*RPhi(i-1,j)-as*RPhi(i,j-1))/ap
-                     Phi(i,j) = Phi(i,j)+alpha*RPhi(i,j)
+                     RPsi(i,j)=(S(i,j)-aw*RPsi(i-1,j)-as*RPsi(i,j-1))/ap
+                     Psi(i,j) = Psi(i,j)+alpha*RPsi(i,j)
               enddo
        enddo
 
@@ -204,19 +204,19 @@
 
 
 
-       subroutine bcphi(N,M,dy,Phi)
+       subroutine bcphi(N,M,dy,Psi)
        implicit none
        integer :: i, j, N, M
        real :: dy
-       real :: Phi(N,M)
+       real :: Psi(N,M)
 
        do j=2,M-1
-              Phi(2,j) = 0.25*Phi(3,j)
-              Phi(N-1,j) = 0.25*Phi(N-2,j)
+              Psi(2,j) = 0.25*Psi(3,j)
+              Psi(N-1,j) = 0.25*Psi(N-2,j)
        enddo
        do i=2,N-1
-              Phi(i,2) = 0.25*Phi(i,3)
-              Phi(i,M-1) = 0.25*(Phi(i,M-2)-2.0*dy)
+              Psi(i,2) = 0.25*Psi(i,3)
+              Psi(i,M-1) = 0.25*(Psi(i,M-2)-2.0*dy)
        enddo
 
        return
@@ -224,20 +224,20 @@
 
 
 
-       subroutine bcvor(N,M,dx,dy,vor,Phi)
+       subroutine bcvor(N,M,dx,dy,vor,Psi)
        implicit none
        integer :: i, j, N, M
        real :: dx, dy
-       real :: vor(N,M), Phi(N,M)
+       real :: vor(N,M), Psi(N,M)
 
        ! 2nd order approximation
        do j=1,M
-              vor(1,j) = 3.0*Phi(2,j)/dx/dx-0.5*vor(2,j)
-              vor(N,j) = 3.0*Phi(N-1,j)/dx/dx-0.5*vor(N-1,j)
+              vor(1,j) = 3.0*Psi(2,j)/dx/dx-0.5*vor(2,j)
+              vor(N,j) = 3.0*Psi(N-1,j)/dx/dx-0.5*vor(N-1,j)
        enddo
        do i=2,N-1
-              vor(i,1) = 3.0*Phi(i,2)/dy/dy-0.5*vor(i,2)
-              vor(i,M) = 3.0*(Phi(i,M-1)+dy)/dy/dy-0.5*vor(i,M-1)
+              vor(i,1) = 3.0*Psi(i,2)/dy/dy-0.5*vor(i,2)
+              vor(i,M) = 3.0*(Psi(i,M-1)+dy)/dy/dy-0.5*vor(i,M-1)
        enddo
 
        return
@@ -245,11 +245,11 @@
 
 
 
-       subroutine caluv(N,M,dx,dy,Phi,u,v)
+       subroutine caluv(N,M,dx,dy,Psi,u,v)
        implicit none
        integer :: i, j, N, M
        real :: dx, dy
-       real :: Phi(N,M), u(N,M), v(N,M)
+       real :: Psi(N,M), u(N,M), v(N,M)
 
        !physical boundary condition
        do j=1,M
@@ -267,8 +267,8 @@
 
        do i=2,N-1
               do j=2,M-1
-                     u(i,j) = 0.5*(Phi(i,j+1)-Phi(i,j-1))/dy
-                     v(i,j) = -0.5*(Phi(i+1,j)-Phi(i-1,j))/dx
+                     u(i,j) = 0.5*(Psi(i,j+1)-Psi(i,j-1))/dy
+                     v(i,j) = -0.5*(Psi(i+1,j)-Psi(i-1,j))/dx
               enddo
        enddo
 
