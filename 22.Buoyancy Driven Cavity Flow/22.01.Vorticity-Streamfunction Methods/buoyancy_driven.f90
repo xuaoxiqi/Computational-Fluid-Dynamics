@@ -29,16 +29,17 @@
         integer :: i, j, itc, itc_max
         real(8) :: dx, dy, Pr, Ra, dt, eps, error
         real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M), T(N,M), RT(N,M)
+        real(8) :: psi_mid, u_max, v_max, x_loc, y_loc
 
 !!! input initial data
         Pr = 0.71d0
-        Ra = 1e7
+        Ra = 1e6
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
-        dt = 1e-6
-        eps = 1e-3
+        dt = 1e-7
+        eps = 1e-4
         itc = 0
-        itc_max = 1e7
+        itc_max = 5*1e6
         error = 100.0d0
 
         write(*,*) 'Start:'
@@ -65,15 +66,18 @@
             call calt(N,M,dt,dx,dy,u,v,T,RT)
 
 !!! check convergence
-            call check(N,M,dt,RVOR,Rpsi,error,itc)
+            call convergence(N,M,dt,RVOR,Rpsi,error,itc)
 
         enddo
+
+!!! validate results with reference
+        call check(N,M,dx,dy,psi,u,v,psi_mid,u_max,v_max,x_loc,y_loc)
 
 !!! output data file
         call output(N,M,X,Y,u,v,psi,VOR,T)
 
         write(*,*)
-        write(*,*) '****************************************************'
+        write(*,*) '************************************************************'
         write(*,*) 'This program sloves Buoyancy Driven Cavity Flow problem'
         write(*,*) 'using Vorticity-Streamfunction Methods'
         write(*,*) 'N =',N,',       M =',M
@@ -83,7 +87,11 @@
         write(*,*) 'eps =',eps
         write(*,*) 'itc =',itc
         write(*,*) 'Developing time=',dt*itc,'s'
-        write(*,*) '****************************************************'
+        write(*,*)
+        write(*,*) 'psi_mid =',psi_mid
+        write(*,*) 'u_max =',u_max,'at y =',y_loc
+        write(*,*) 'v_max =',v_max,'at x =',x_loc
+        write(*,*) '************************************************************'
         write(*,*)
 
         stop
@@ -147,6 +155,14 @@
         end subroutine solvor
 
 
+
+!        subroutine solpsi
+!
+!        psin(i,j) = (1-alpha)*psi(i,j)+alpha/2.0d0/()
+!        return
+!        end subroutine solpsi
+
+
         subroutine solpsi(N,M,dx,dy,vor,psi,Rpsi)
         implicit none
         integer :: i, j ,N, M
@@ -159,7 +175,7 @@
 
         do i=3,N-2
             do j=3,M-2
-                S(i,j)=vor(i,j)-(psi(i+1,j)-2.0d0*psi(i,j)+psi(i-1,j))/dx/dx-(psi(i,j+1)-2.0d0*psi(i,j)+psi(i,j-1))/dy/dy
+                S(i,j) = vor(i,j)-(psi(i+1,j)-2.0d0*psi(i,j)+psi(i-1,j))/dx/dx-(psi(i,j+1)-2.0d0*psi(i,j)+psi(i,j-1))/dy/dy
             enddo
         enddo
 
@@ -176,7 +192,7 @@
             Rpsi(i,M-1) = 0.0d0
         enddo
 
-        alpha = 1.5d0      !alpha is ralaxtion factor
+        alpha = 0.5d0      !alpha is ralaxtion factor
 
         do i=3,N-2
             do j=3,M-2
@@ -201,8 +217,9 @@
         enddo
         do i=2,N-1
             psi(i,2) = 0.25d0*psi(i,3)
-            psi(i,M-1) = 0.25d0*(psi(i,M-2)-2.0d0*dy)
+            psi(i,M-1) = 0.25d0*psi(i,M-2)
         enddo
+
 
         return
         end subroutine bcpsi
@@ -219,9 +236,9 @@
             vor(1,j) = 3.0d0*psi(2,j)/dx/dx-0.5d0*vor(2,j)
             vor(N,j) = 3.0d0*psi(N-1,j)/dx/dx-0.5d0*vor(N-1,j)
         enddo
-        do i=2,N-1
+        do i=1,N
             vor(i,1) = 3.0d0*psi(i,2)/dy/dy-0.5d0*vor(i,2)
-            vor(i,M) = 3.0d0*(psi(i,M-1)+dy)/dy/dy-0.5*vor(i,M-1)
+            vor(i,M) = 3.0d0*psi(i,M-1)/dy/dy-0.5d0*vor(i,M-1)
         enddo
 
         return
@@ -235,23 +252,23 @@
         real(8) :: psi(N,M), u(N,M), v(N,M)
 
         !physical boundary condition
+        do i=1,N
+            u(i,1) = 0.0d0
+            v(i,1) = 0.0d0
+            u(i,M) = 0.0d0
+            v(i,M) = 0.0d0
+        enddo
         do j=1,M
             u(1,j) = 0.0d0
             u(N,j) = 0.0d0
             v(1,j) = 0.0d0
             v(N,j) = 0.0d0
         enddo
-        do i=2,N-1
-            u(i,1) = 0.0d0
-            v(i,1) = 0.0d0
-            u(i,M) = 1.0d0
-            v(i,M) = 0.0d0
-        enddo
 
         do i=2,N-1
             do j=2,M-1
-                u(i,j) = 0.5d0*(psi(i,j+1)-psi(i,j-1))/dy
-                v(i,j) = -0.5d0*(psi(i+1,j)-psi(i-1,j))/dx
+                u(i,j) = -0.5d0*(psi(i,j+1)-psi(i,j-1))/dy
+                v(i,j) = 0.5d0*(psi(i+1,j)-psi(i-1,j))/dx
             enddo
         enddo
 
@@ -293,7 +310,7 @@
         end subroutine calt
 
 !!! check convergence
-        subroutine check(N,M,dt,RVOR,Rpsi,error,itc)
+        subroutine convergence(N,M,dt,RVOR,Rpsi,error,itc)
         implicit none
         integer :: N, M, i, j, itc
         real(8) :: RVOR(N,M), Rpsi(N,M)
@@ -314,6 +331,41 @@
         if(itc.EQ.1) error = 100.0d0
 
         write(*,*) 'itc=',itc,'    |    error=',error
+
+        return
+        end subroutine convergence
+
+
+!!! validate results with reference
+        subroutine check(N,M,dx,dy,psi,u,v,psi_mid,u_max,v_max,x_loc,y_loc)
+        implicit none
+        integer :: N, M, mid_x, mid_y, i, j, temp_x, temp_y
+        real(8) :: dx, dy, psi_mid, u_max, v_max, x_loc, y_loc
+        real(8) :: psi(N,M), u(N,M), v(N,M)
+
+        mid_x = INT(N/2)
+        mid_y = INT(M/2)
+        psi_mid = psi(mid_x,mid_y)
+
+        u_max = 0.0d0
+        v_max = 0.0d0
+        temp_x = 0
+        temp_y = 0
+        do j=1,M
+            if(u(mid_x,j).GT.u_max) then
+                u_max = u(mid_x,j)
+                temp_y = j
+            endif
+        enddo
+        y_loc = (temp_y-1)*dy
+
+        do i=1,N
+            if(v(i,mid_y).GT.v_max) then
+                v_max = v(i,mid_y)
+                temp_x = i
+            endif
+        enddo
+        x_loc = (temp_x-1)*dx
 
         return
         end subroutine check
@@ -344,3 +396,6 @@
 
         return
         end subroutine output
+
+
+

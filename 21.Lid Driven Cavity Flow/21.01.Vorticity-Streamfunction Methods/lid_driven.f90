@@ -29,7 +29,7 @@
         real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M)
 
 !!! input initial data
-        Re = 10000.0d0
+        Re = 1000.0d0
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
         dt = 0.0005d0
@@ -45,22 +45,22 @@
         do while((error.GT.eps).AND.(itc.LT.itc_max))
 
 !!! solve Vorticity Equation
-                call solvor(N,M,dx,dy,Re,dt,u,v,vor,RVOR)
+            call solvor(N,M,dx,dy,Re,dt,u,v,vor,RVOR)
 
 !!! solve Streamfunction Equation
-                call solpsi(N,M,dx,dy,vor,psi,Rpsi)
+            call solpsi(N,M,dx,dy,vor,psi,Rpsi)
 
 !!! updates the values of sream function at boundary points
-                call bcpsi(N,M,dy,psi)
+            call bcpsi(N,M,dy,psi)
 
 !!! updates the boundary condition for vorticity
-                call bcvor(N,M,dx,dy,vor,psi)
+            call bcvor(N,M,dx,dy,vor,psi)
 
 !!! compute the velocity components u and v
-                call caluv(N,M,dx,dy,psi,u,v)
+            call caluv(N,M,dx,dy,psi,u,v)
 
 !!! check convergence
-                call check(N,M,dt,RVOR,Rpsi,error,itc)
+            call convergence(N,M,dt,RVOR,Rpsi,error,itc)
 
         enddo
 
@@ -68,7 +68,7 @@
         call output(N,M,X,Y,u,v,psi,VOR)
 
         write(*,*)
-        write(*,*) '****************************************************'
+        write(*,*) '************************************************************'
         write(*,*) 'This program sloves Lid Driven Cavity Flow problem'
         write(*,*) 'using Vorticity-Streamfunction Methods'
         write(*,*) 'N =',N,',       M =',M
@@ -77,7 +77,7 @@
         write(*,*) 'eps =',eps
         write(*,*) 'itc =',itc
         write(*,*) 'Developing time=',dt*itc,'s'
-        write(*,*) '****************************************************'
+        write(*,*) '************************************************************'
         write(*,*)
 
         stop
@@ -224,33 +224,6 @@
         end subroutine bcvor
 
 
-!!! check convergence
-        subroutine check(N,M,dt,RVOR,Rpsi,error,itc)
-        implicit none
-        integer :: N, M, i, j, itc
-        real(8) :: RVOR(N,M), Rpsi(N,M)
-        real(8) :: dt, error, errvor, errpsi
-
-        itc = itc+1
-        errvor = 0.0d0
-        errpsi = 0.0d0
-
-        do i=1,N
-            do j=1,M
-                if(ABS(RVOR(i,j))*dt.GT.errvor) errvor = ABS(RVOR(i,j))*dt
-                if(ABS(Rpsi(i,j)).GT.errpsi) errpsi = ABS(Rpsi(i,j))
-            enddo
-        enddo
-
-        error = MAX(errvor,errpsi)
-        if(itc.EQ.1) error = 100.0d0
-
-        write(*,*) 'itc=',itc,'    |    error=',error
-
-        return
-        end subroutine check
-
-
 !!! compute the velocity components u and v
         subroutine caluv(N,M,dx,dy,psi,u,v)
         implicit none
@@ -281,6 +254,34 @@
 
         return
         end subroutine caluv
+
+
+!!! check convergence
+        subroutine convergence(N,M,dt,RVOR,Rpsi,error,itc)
+        implicit none
+        integer :: N, M, i, j, itc
+        real(8) :: RVOR(N,M), Rpsi(N,M)
+        real(8) :: dt, error, errvor, errpsi
+
+        itc = itc+1
+        errvor = 0.0d0
+        errpsi = 0.0d0
+
+        do i=1,N
+            do j=1,M
+                if(ABS(RVOR(i,j))*dt.GT.errvor) errvor = ABS(RVOR(i,j))*dt
+                if(ABS(Rpsi(i,j)).GT.errpsi) errpsi = ABS(Rpsi(i,j))
+            enddo
+        enddo
+
+        error = MAX(errvor,errpsi)
+        if(itc.EQ.1) error = 100.0d0
+
+        write(*,*) 'itc=',itc,'    |    error=',error
+
+        return
+        end subroutine convergence
+
 
 
 !!! output data file

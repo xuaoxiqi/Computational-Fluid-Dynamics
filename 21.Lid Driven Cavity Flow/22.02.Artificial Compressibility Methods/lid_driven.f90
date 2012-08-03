@@ -66,17 +66,17 @@
         call output(N,M,X,Y,uc,vc,pc,psi)
 
         write(*,*)
-        write(*,*) '****************************************************'
+        write(*,*) '************************************************************'
         write(*,*) 'This program sloves Lid Driven Cavity Flow problem'
         write(*,*) 'using Artificial Compressibility Methods'
         write(*,*) 'N =',N,',       M =',M
         write(*,*) 'Re =',Re
         write(*,*) 'dt =',dt
-        write(*,*) 'c =',c
+        write(*,*) 'c (Artificial Compressibility coefficient) =',c
         write(*,*) 'eps =',eps
         write(*,*) 'itc =',itc
         write(*,*) 'Developing time=',dt*itc,'s'
-        write(*,*) '****************************************************'
+        write(*,*) '************************************************************'
         write(*,*)
 
         stop
