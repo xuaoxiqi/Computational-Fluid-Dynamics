@@ -110,10 +110,6 @@
             enddo
         enddo
 
-!       do i=2,N-1
-!              u(i,M) = 1.0d0
-!       enddo
-
         return
         end subroutine initial
 

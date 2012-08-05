@@ -28,23 +28,23 @@
         integer, parameter :: N=101, M=101
         integer :: i, j, itc, itc_max
         real(8) :: dx, dy, Pr, Ra, dt, eps, error
-        real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M), T(N,M), RT(N,M)
+        real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M), T(N,M)
         real(8) :: psi_mid, u_max, v_max, x_loc, y_loc
 
 !!! input initial data
         Pr = 0.71d0
-        Ra = 1e6
+        Ra = 1e4
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
         dt = 1e-7
-        eps = 1e-4
+        eps = 1e-3
         itc = 0
         itc_max = 5*1e6
         error = 100.0d0
 
         write(*,*) 'Start:'
 !!! set up initial flow field
-        call initial(N,M,dx,dy,X,Y,u,v,psi,vor,RVOR,Rpsi,T,RT)
+        call initial(N,M,dx,dy,X,Y,u,v,psi,vor,RVOR,Rpsi,T)
 
         do while((error.GT.eps).AND.(itc.LT.itc_max))
 !!! solve vorticity equation
@@ -63,7 +63,7 @@
             call caluv(N,M,dx,dy,psi,u,v)
 
 !!! compute temperature field
-            call calt(N,M,dt,dx,dy,u,v,T,RT)
+            call calt(N,M,dt,dx,dy,u,v,T)
 
 !!! check convergence
             call convergence(N,M,dt,RVOR,Rpsi,error,itc)
@@ -98,12 +98,12 @@
         end program main
 
 
-
-        subroutine initial(N,M,dx,dy,X,Y,u,v,psi,vor,RVOR,Rpsi,T,RT)
+!!! set up initial flow field
+        subroutine initial(N,M,dx,dy,X,Y,u,v,psi,vor,RVOR,Rpsi,T)
         implicit none
         integer :: i, j, N, M
         real(8) :: dx, dy
-        real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M), vor(N,M), RVOR(N,M), Rpsi(N,M), T(N,M), RT(N,M)
+        real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M), vor(N,M), RVOR(N,M), Rpsi(N,M), T(N,M)
 
         do i=1,N
             X(i) = (i-1)*dx
@@ -121,7 +121,6 @@
                 vor(i,j) = 0.0d0!!!    vor(i,j)------------------vorticity function
                 RVOR(i,j) = 0.0d0!!!    RVOR(i,j)-------------(vor^{n+1}_{i,j}-vor^{n}_{i,j})/dt
                 T(i,j) = 0.0d0!!!      T(i,j))--------------Temperature field
-                RT(i,j) = 0.0d0!!!
             enddo
         enddo
 
@@ -133,6 +132,7 @@
         end subroutine initial
 
 
+!!! solve vorticity equation
         subroutine solvor(N,M,dx,dy,Pr,Ra,dt,u,v,vor,RVOR,T)
         implicit none
         integer :: i, j, N, M
@@ -155,14 +155,7 @@
         end subroutine solvor
 
 
-
-!        subroutine solpsi
-!
-!        psin(i,j) = (1-alpha)*psi(i,j)+alpha/2.0d0/()
-!        return
-!        end subroutine solpsi
-
-
+!!! solve Streamfunction equation
         subroutine solpsi(N,M,dx,dy,vor,psi,Rpsi)
         implicit none
         integer :: i, j ,N, M
@@ -192,7 +185,7 @@
             Rpsi(i,M-1) = 0.0d0
         enddo
 
-        alpha = 0.5d0      !alpha is ralaxtion factor
+        alpha = 1.5d0      !alpha is ralaxtion factor
 
         do i=3,N-2
             do j=3,M-2
@@ -205,6 +198,7 @@
         end subroutine solpsi
 
 
+!!! updates the values of sream function at boundary points
         subroutine bcpsi(N,M,dy,psi)
         implicit none
         integer :: i, j, N, M
@@ -225,6 +219,7 @@
         end subroutine bcpsi
 
 
+!!! updates the boundary condition for vorticity
         subroutine bcvor(N,M,dx,dy,vor,psi)
         implicit none
         integer :: i, j, N, M
@@ -245,6 +240,7 @@
         end subroutine bcvor
 
 
+!!! compute velocity components u and v
         subroutine caluv(N,M,dx,dy,psi,u,v)
         implicit none
         integer :: i, j, N, M
@@ -276,7 +272,8 @@
         end subroutine caluv
 
 
-        subroutine calt(N,M,dt,dx,dy,u,v,T,RT)
+!!! compute temperature field
+        subroutine calt(N,M,dt,dx,dy,u,v,T)
         implicit none
         integer :: i, j, N, M
         real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
