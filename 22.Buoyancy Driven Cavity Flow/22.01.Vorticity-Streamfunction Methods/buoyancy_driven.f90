@@ -26,21 +26,22 @@
         program main
         implicit none
         integer, parameter :: N=101, M=101
-        integer :: i, j, itc, itc_max
+        integer :: i, j, itc, itc_max, k
         real(8) :: dx, dy, Pr, Ra, dt, eps, error
         real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M), T(N,M)
         real(8) :: psi_mid, u_max, v_max, x_loc, y_loc
 
 !!! input initial data
         Pr = 0.71d0
-        Ra = 1e4
+        Ra = 1e5
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
-        dt = 1e-7
-        eps = 1e-3
+        dt = 5*1e-6
+        eps = 1e-4
         itc = 0
-        itc_max = 5*1e6
+        itc_max = 7*1e6
         error = 100.0d0
+        k = 0
 
         write(*,*) 'Start:'
 !!! set up initial flow field
@@ -68,13 +69,19 @@
 !!! check convergence
             call convergence(N,M,dt,RVOR,Rpsi,error,itc)
 
+!!! output preliminary results
+            if (MOD(itc,10000).EQ.0) then
+                k = k+1
+                call output(N,M,X,Y,u,v,psi,VOR,T,k)
+            endif
+
         enddo
 
 !!! validate results with reference
         call check(N,M,dx,dy,psi,u,v,psi_mid,u_max,v_max,x_loc,y_loc)
 
 !!! output data file
-        call output(N,M,X,Y,u,v,psi,VOR,T)
+        call output(N,M,X,Y,u,v,psi,VOR,T,k)
 
         write(*,*)
         write(*,*) '************************************************************'
@@ -146,7 +153,7 @@
                 dvory2 = (vor(i,j+1)-2.0d0*vor(i,j)+vor(i,j-1))/dy/dy
                 dvorx1 = (u(i+1,j)*vor(i+1,j)-u(i-1,j)*vor(i-1,j))/2.0d0/dx
                 dvory1 = (v(i,j+1)*vor(i,j+1)-v(i,j-1)*vor(i,j-1))/2.0d0/dy
-                RVOR(i,j) = (dvorx2+dvory2)*Pr-dvorx1-dvory1+Ra*Pr*(T(i+1,j)-T(i-1,j))/2.0d0/dx
+                RVOR(i,j) = (dvorx2+dvory2)*Pr-Ra*Pr*(T(i+1,j)-T(i-1,j))/2.0d0/dx-dvorx1-dvory1
                 vor(i,j) = vor(i,j)+dt*RVOR(i,j)
             enddo
         enddo
@@ -263,8 +270,8 @@
 
         do i=2,N-1
             do j=2,M-1
-                u(i,j) = -0.5d0*(psi(i,j+1)-psi(i,j-1))/dy
-                v(i,j) = 0.5d0*(psi(i+1,j)-psi(i-1,j))/dx
+                u(i,j) = 0.5d0*(psi(i,j+1)-psi(i,j-1))/dy
+                v(i,j) = -0.5d0*(psi(i+1,j)-psi(i-1,j))/dx
             enddo
         enddo
 
@@ -277,7 +284,7 @@
         implicit none
         integer :: i, j, N, M
         real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
-        real(8) :: T(N,M), u(N,M), v(N,M), RT(N,M)
+        real(8) :: T(N,M), u(N,M), v(N,M)
 
        ! Interior points using FTCS Sheme
         do i=2,N-1
@@ -286,8 +293,7 @@
                 dTy2 = (T(i,j+1)-2*T(i,j)+T(i,j-1))/dy/dy
                 dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2/dx
                 dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2/dy
-                RT(i,j) = dTx2+dTy2+dTx1+dTy1
-                T(i,j) = T(i,j)+dt*RT(i,j)
+                T(i,j) = T(i,j)+dt*(dTx2+dTy2-dTx1-dTy1)
             enddo
         enddo
 
@@ -327,7 +333,9 @@
         error = MAX(errvor,errpsi)
         if(itc.EQ.1) error = 100.0d0
 
-        write(*,*) 'itc=',itc,'    |    error=',error
+        if (MOD(itc,500).EQ.0) then
+            write(*,*) 'itc=',itc,'    |    error=',error
+        endif
 
         return
         end subroutine convergence
@@ -368,12 +376,19 @@
         end subroutine check
 
 !!! output data file
-        subroutine output(N,M,X,Y,u,v,psi,VOR,T)
+        subroutine output(N,M,X,Y,u,v,psi,VOR,T,k)
         implicit none
-        integer :: N, M, i, j
+        integer :: N, M, i, j, k
         real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M), VOR(N,M), T(N,M)
+        character*16 filename
 
-        open(unit=02,file='./cavity.dat',status='unknown')
+        filename='0000cavity.dat'
+        filename(1:1) = CHAR(ICHAR('0')+MOD(k/1000,10))
+        filename(2:2) = CHAR(ICHAR('0')+MOD(k/100,10))
+        filename(3:3) = CHAR(ICHAR('0')+MOD(k/10,10))
+        filename(4:4) = CHAR(ICHAR('0')+MOD(k,10))
+
+        open(unit=02,file=filename,status='unknown')
         write(02,101)
         write(02,102)
         write(02,103) N, M
@@ -389,7 +404,7 @@
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
         close(02)
-        write(*,*) 'Data export to ./cavity.dat file!'
+        write(*,*) 'Data export to',filename,'file!'
 
         return
         end subroutine output

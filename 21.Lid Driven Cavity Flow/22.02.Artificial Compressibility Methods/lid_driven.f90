@@ -20,7 +20,7 @@
         program main
         implicit none
         integer, parameter :: N=101,M=101
-        integer :: itc, itc_max
+        integer :: itc, itc_max, k
         real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),psi(N,M),X(N), Y(M)
         real(8) :: un(N,M+1),vn(N+1,M),pn(N+1,M+1),uc(N,M),vc(N,M),pc(N,M)
         real(8) :: c, c2, Re, dt, dx, dy, eps, error
@@ -28,14 +28,15 @@
 !!! input initial data
         c = 1.5d0
         c2 = c*c   ! c2 = 2.25d0
-        Re = 10000.0d0
-        dt = 0.0005d0
+        Re = 100.0d0
+        dt = 1e-3
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
-        eps = 1e-3
+        eps = 1e-4
         itc = 0
         itc_max = 1e6
         error=100.00d0
+        k = 0
 
         write(*,*) 'Start:'
 !!! set up initial flow field
@@ -54,6 +55,14 @@
 !!! check convergence
             call check(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
 
+!!! output preliminary results
+            if (MOD(itc,10000).EQ.0) then
+                call caluvp(N,M,u,v,p,uc,vc,pc)
+                call calpsi(N,M,dx,dy,uc,vc,psi)
+                k = k+1
+                call output(N,M,X,Y,uc,vc,psi,pc,k)
+            endif
+
         enddo
 
 !!! compute velocity components u, v and pressure p
@@ -63,7 +72,7 @@
         call calpsi(N,M,dx,dy,uc,vc,psi)
 
 !!! output data file
-        call output(N,M,X,Y,uc,vc,pc,psi)
+        call output(N,M,X,Y,uc,vc,psi,pc,k)
 
         write(*,*)
         write(*,*) '************************************************************'
@@ -380,7 +389,9 @@
 
         error = MAX(erru,(MAX(errv,errp)))
 
-        write(*,*) 'itc=',itc,'    |    error=',error
+        if (MOD(itc,500).EQ.0) then
+            write(*,*) 'itc=',itc,'    |    error=',error
+        endif
 
         return
         end subroutine check
@@ -441,28 +452,36 @@
         end subroutine calpsi
 
 !!! output data file
-        subroutine output(N,M,X,Y,uc,vc,pc,psi)
+        subroutine output(N,M,X,Y,uc,vc,psi,pc,k)
         implicit none
-        integer :: N, M, i, j
-        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), pc(N,M), psi(N,M)
+        integer :: N, M, i, j, k
+        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), psi(N,M), pc(N,M)
 
-        open(unit=02,file='./cavity.dat',status='unknown')
+        character*16 filename
+
+        filename='0000cavity.dat'
+        filename(1:1) = CHAR(ICHAR('0')+MOD(k/1000,10))
+        filename(2:2) = CHAR(ICHAR('0')+MOD(k/100,10))
+        filename(3:3) = CHAR(ICHAR('0')+MOD(k/10,10))
+        filename(4:4) = CHAR(ICHAR('0')+MOD(k,10))
+
+        open(unit=02,file=filename,status='unknown')
         write(02,101)
         write(02,102)
         write(02,103) N, M
         do j=1,M
             do i = 1,N
-                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), pc(i,j), psi(i,j)
+                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), psi(i,j), pc(i,j)
             enddo
         enddo
 
 100     format(2x,10(e12.6,'      '))
 101     format('Title="Lid Driven Cavity Flow(Artificial Compressibility Methods)"')
-102     format('Variables=x,y,u,v,p,psi')
+102     format('Variables=x,y,u,v,psi,pc')
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
         close(02)
-        write(*,*) 'Data export to ./cavity.dat file!'
+        write(*,*) 'Data export to',filename,'file!'
 
         return
         end subroutine output

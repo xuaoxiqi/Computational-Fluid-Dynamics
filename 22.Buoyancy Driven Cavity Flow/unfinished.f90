@@ -20,23 +20,25 @@
         program main
         implicit none
         integer, parameter :: N=101,M=101
-        integer :: itc, itc_max, i, j
-        real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),T(N+1,M+1),psi(N,M),X(N), Y(M)
+        integer :: itc, itc_max, i, j, k
+        real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),T(N+1,M+1), psi(N,M), X(N), Y(M)
         real(8) :: un(N,M+1),vn(N+1,M),pn(N+1,M+1),Tn(N+1,M+1),uc(N,M),vc(N,M),pc(N,M),Tc(N,M)
         real(8) :: c, c2, Ra, Pr, dt, dx, dy, eps, error
+        real(8) :: psi_mid, u_max, v_max, x_loc, y_loc
 
 !!! input initial data
         c = 1.5d0
         c2 = c*c   ! c2 = 2.25d0
-        Ra = 1000.0d0
-        Pr = 0.71
-        dt = 1e-6
+        Ra = 1e4
+        Pr = 0.71d0
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
-        eps = 1e-3
+        dt = 2*1e-5
+        eps = 1e-6
+        itc_max = 2*1e6
         itc = 0
-        itc_max = 1e6
-        error=100.00d0
+        error = 100.00d0
+        k = 0
 
         write(*,*) 'Start:'
 !!! set up initial flow field
@@ -44,7 +46,7 @@
 
         do while((error.GT.eps).AND.(itc.LT.itc_max))
 
-            error=0.0
+            error=0.0d0
 
 !!! Solve Momentum Equation with QUICK Scheme
             call quick(N,M,dx,dy,dt,Ra,Pr,u,v,p,T,un,vn)
@@ -53,31 +55,19 @@
             call calpn(N,M,dx,dy,dt,c2,p,un,vn,pn)
 
 !!! Solve Energy Equation
-            call caltn(N,M,dt,dx,dy,un,vn,Tn)
+            call caltn(N,M,dx,dy,dt,T,un,vn,Tn)
 
 !!! check convergence
             call convergence(N,M,dt,c2,error,u,v,p,T,un,vn,pn,Tn,itc)
-!-----------------------------------------------------------------------------------------
-                        open(unit=01,file='./test.dat',status='unknown')
-                        write(01,101)
-                        write(01,102)
-                        write(01,103) N, M
-                        do j=1,M
-                            do i = 1,N
-                                write(01,100) X(i), Y(j), u(i,j), v(i,j), Tc(i,j)
-                            enddo
-                        enddo
 
-                100     format(2x,10(e12.6,'      '))
-                101     format('Title="Lid Driven Cavity Flow(Artificial Compressibility Methods)"')
-                102     format('Variables=x,y,u,v,T')
-                103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
-
-                        close(01)
-                        write(*,*) 'ssssssssssssssssssssssssssssssssssss'
-!-----------------------------------------------------------------------------------------
-
-
+!!! output preliminary results
+            if (MOD(itc,10000).EQ.0) then
+                call caluvpt(N,M,u,v,p,T,uc,vc,pc,Tc)
+                call calpsi(N,M,dx,dy,uc,vc,psi)
+                k = k+1
+                call output(N,M,X,Y,uc,vc,psi,pc,Tc,k)
+            endif
+            
         enddo
 
 !!! compute velocity components u, v and pressure p
@@ -86,8 +76,11 @@
 !!! compute Streamfunction
         call calpsi(N,M,dx,dy,uc,vc,psi)
 
-!!!! output data file
-!        call output(N,M,X,Y,uc,vc,pc,Tc,psi)
+!!! validate results with reference
+        call check(N,M,dx,dy,psi,u,v,psi_mid,u_max,v_max,x_loc,y_loc)
+
+!!! output data file
+        call output(N,M,X,Y,uc,vc,psi,pc,Tc,k)
 
         write(*,*)
         write(*,*) '************************************************************'
@@ -101,6 +94,10 @@
         write(*,*) 'eps =',eps
         write(*,*) 'itc =',itc
         write(*,*) 'Developing time=',dt*itc,'s'
+        write(*,*)
+        write(*,*) 'psi_mid =',psi_mid
+        write(*,*) 'u_max =',u_max,'at y =',y_loc
+        write(*,*) 'v_max =',v_max,'at x =',x_loc
         write(*,*) '************************************************************'
         write(*,*)
 
@@ -125,6 +122,8 @@
             do j=1,M+1
                 p(i,j) = 1.0d0
                 T(i,j) = 0.0d0
+                if(i.EQ.1) T(i,j) = 4.0d0/3.0d0
+                if(i.EQ.2) T(i,j) = 2.0d0/3.0d0
             enddo
         enddo
         do i=1,N
@@ -161,10 +160,10 @@
         do i=3,N-2
             do j=3,M-1
 
-                fw = 0.5*(u(i-1,j)+u(i,j))*dy
-                fe = 0.5*(u(i,j)+u(i+1,j))*dy
-                fs = 0.5*(v(i,j-1)+v(i+1,j-1))*dx
-                fn = 0.5*(v(i,j)+v(i+1,j))*dx
+                fw = 0.5d0*(u(i-1,j)+u(i,j))*dy
+                fe = 0.5d0*(u(i,j)+u(i+1,j))*dy
+                fs = 0.5d0*(v(i,j-1)+v(i+1,j-1))*dx
+                fn = 0.5d0*(v(i,j)+v(i+1,j))*dx
                 df = fe-fw+fn-fs
 
                 !!! common coefficient in 3rd-order upwind QUICK Scheme
@@ -204,12 +203,12 @@
 
         !!! compute exterior region boundary with physical boundary condition
         do i=2,N-1
-            un(i,1)=-un(i,2)
-            un(i,M+1)=-un(i,M)
+            un(i,1) = -un(i,2)
+            un(i,M+1) = -un(i,M)
         enddo
         do j=1,M+1
-            un(1,j)=0.0
-            un(N,j)=0.0
+            un(1,j) = 0.0d0
+            un(N,j) = 0.0d0
         enddo
 !!!!!!!!!!!!!!!!!!!!!compute x-direction velocity component un!!!!!!!!!!!!!!!!!!!!!
 
@@ -236,7 +235,7 @@
 
                 vn(i,j) = v(i,j) + dt/dx/dy*( -ap*v(i,j)+aw*v(i-1,j)+ae*v(i+1,j)+aww*v(i-2,j)+aee*v(i+2,j)   &
                                 +as*v(i,j-1)+an*v(i,j+1)+ass*v(i,j-2)+ann*v(i,j+2) ) - dt*(p(i,j+1)-p(i,j))/dy &
-                                + dt*Ra*Pr*T(i,j)/dy
+                                + dt*Ra*Pr*(T(i,j)+T(i,j+1))/2.0d0
 
             enddo
         enddo
@@ -261,12 +260,12 @@
 
        !!! compute exterior region boundary with physical boundary condition
         do i=2,N
-            vn(i,1)=0.0
-            vn(i,M)=0.0
+            vn(i,1) = 0.0d0
+            vn(i,M) = 0.0d0
         enddo
         do j=1,M
-            vn(1,j)=-vn(2,j)
-            vn(N+1,j)=-vn(N,j)
+            vn(1,j) = -vn(2,j)
+            vn(N+1,j) = -vn(N,j)
         enddo
 !!!!!!!!!!!!!!!!!!!!!compute y-direction velocity component vn!!!!!!!!!!!!!!!!!!!!!
 
@@ -281,9 +280,9 @@
         real(8) :: alpha, x
 
         if(x.GT.0.0d0) then
-            alpha=1.0d0
+            alpha = 1.0d0
         elseif(x.LT.0.0d0) then
-            alpha=0.0d0
+            alpha = 0.0d0
         endif
 
         return
@@ -298,11 +297,11 @@
         real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),un(N,M+1)
         real(8) :: aw, ae, as, an, df, ap
 
-        aw = Pr+MAX(0.5*(u(i-1,j)+u(i,j))*dy,0.0)
-        ae = Pr+MAX(0.0,-0.5*(u(i,j)+u(i+1,j))*dy)
-        as = Pr+MAX(0.5*(v(i,j-1)+v(i+1,j-1))*dx,0.0)
-        an = Pr+MAX(0.0,-0.5*(v(i,j)+v(i+1,j))*dx)
-        df = 0.5*(u(i+1,j)-u(i-1,j))*dy+0.5*(v(i,j)+v(i+1,j)-v(i,j-1)-v(i+1,j-1))*dx
+        aw = Pr+MAX(0.5d0*(u(i-1,j)+u(i,j))*dy,0.0d0)
+        ae = Pr+MAX(0.0d0,-0.5d0*(u(i,j)+u(i+1,j))*dy)
+        as = Pr+MAX(0.5d0*(v(i,j-1)+v(i+1,j-1))*dx,0.0d0)
+        an = Pr+MAX(0.0d0,-0.5d0*(v(i,j)+v(i+1,j))*dx)
+        df = 0.5d0*(u(i+1,j)-u(i-1,j))*dy+0.5d0*(v(i,j)+v(i+1,j)-v(i,j-1)-v(i+1,j-1))*dx
         ap = aw+ae+as+an+df
 
         un(i,j) = u(i,j)+dt/dx/dy*(-ap*u(i,j)+aw*u(i-1,j)+ae*u(i+1,j)+as*u(i,j-1)+an*u(i,j+1))-dt*(p(i+1,j)-p(i,j))/dx
@@ -319,15 +318,15 @@
         real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),T(N+1,M+1),vn(N+1,M)
         real(8) :: aw, ae, as, an, df, ap
 
-        aw = Pr+MAX(0.5*(u(i-1,j)+u(i-1,j+1))*dy,0.0)
-        ae = Pr+MAX(0.0,-0.5*(u(i,j)+u(i,j+1))*dy)
-        as = Pr+MAX(0.5*(v(i,j-1)+v(i,j))*dx,0.0)
-        an = Pr+MAX(0.0,-0.5*(v(i,j)+v(i,j+1))*dx)
-        df = 0.5d0*(u(i,j)+u(i,j+1)-u(i-1,j)-u(i-1,j+1))*dy+0.5*(v(i,j+1)-v(i,j-1))*dx
+        aw = Pr+MAX(0.5d0*(u(i-1,j)+u(i-1,j+1))*dy,0.0d0)
+        ae = Pr+MAX(0.0d0,-0.5d0*(u(i,j)+u(i,j+1))*dy)
+        as = Pr+MAX(0.5d0*(v(i,j-1)+v(i,j))*dx,0.0d0)
+        an = Pr+MAX(0.0d0,-0.5d0*(v(i,j)+v(i,j+1))*dx)
+        df = 0.5d0*(u(i,j)+u(i,j+1)-u(i-1,j)-u(i-1,j+1))*dy+0.5d0*(v(i,j+1)-v(i,j-1))*dx
         ap = aw+ae+as+an+df
 
         vn(i,j) = v(i,j)+dt/dx/dy*(-ap*v(i,j)+aw*v(i-1,j)+ae*v(i+1,j) +as*v(i,j-1)+an*v(i,j+1))-dt*(p(i,j+1)-p(i,j))/dy &
-                 + dt*Ra*Pr*T(i,j)/dy
+                 + dt*Ra*Pr*(T(i,j)+T(i,j+1))/2.0d0
 
         return
         end subroutine upbound_v
@@ -360,35 +359,38 @@
         end subroutine calpn
 
 
-        subroutine caltn(N,M,dt,dx,dy,u,v,T)
+        subroutine caltn(N,M,dx,dy,dt,T,un,vn,Tn)
 
         implicit none
         integer :: i, j, N, M
         real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
-        real(8) :: T(N+1,M+1), u(N,M+1), v(N+1,M), RT(N+1,M+1)
+        real(8) :: T(N+1,M+1), Tn(N+1,M+1), un(N,M+1), vn(N+1,M)
 
-       ! Interior points using FTCS Sheme
-        do i=2,N
-            do j=2,M
+       ! Interior points using FTCS Sheme(Conservation form)
+        do i=3,N-1
+            do j=3,M-1
                 dTx2 = (T(i+1,j)-2*T(i,j)+T(i-1,j))/dx/dx
                 dTy2 = (T(i,j+1)-2*T(i,j)+T(i,j-1))/dy/dy
-                dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2/dx
-                dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2/dy
-                RT(i,j) = dTx2+dTy2+dTx1+dTy1
-                T(i,j) = T(i,j)+dt*RT(i,j)
+                dTx1 = ( (un(i+1,j)+un(i,j))/2.0d0*T(i+1,j)-(un(i-1,j)+un(i-2,j))/2.0d0*T(i-1,j) ) / 2.0d0/dx
+                dTy1 = ( (vn(i,j+1)+vn(i,j))/2.0d0*T(i,j+1)-(vn(i,j-1)+vn(i,j-2))/2.0d0*T(i,j-1) ) / 2.0d0/dy
+                Tn(i,j) = T(i,j)+dt*(dTx2+dTy2-dTx1-dTy1)
             enddo
         enddo
 
        !Left and right side boundary(Dirichlet B.C.)
         do j=1,M+1
-            T(1,j) = 1.0d0
-            T(N+1,j) = 0.0d0
+            Tn(1,j) = 4.0d0/3.0d0
+            Tn(2,j) = 2.0d0/3.0d0
+            Tn(N,j) = 0.0d0
+            Tn(N+1,j) = 0.0d0
         enddo
 
        !Top and bottom side boundary(Neumann B.C.)
-        do i=1,N+1
-            T(i,1) = (4.0d0*T(i,2)-T(i,3))/3.0d0
-            T(i,M+1) = (4.0d0*T(i,M)-T(i,M-1))/3.0d0
+        do i=3,N-1
+            Tn(i,2) = (4.0d0*Tn(i,3)-Tn(i,4))/3.0d0
+            Tn(i,1) = Tn(i,2)
+            Tn(i,M) = (4.0d0*Tn(i,M-1)-Tn(i,M-2))/3.0d0
+            Tn(i,M+1) = Tn(i,M)
         enddo
 
         return
@@ -410,7 +412,7 @@
 
         do i=1,N
             do j=1,M+1
-                temp = ABS(un(i,j)-u(i,j))/dt
+                temp = ABS(un(i,j)-u(i,j))
                 if(temp.GT.erru) erru = temp
                 u(i,j) = un(i,j)
             enddo
@@ -418,7 +420,7 @@
 
         do i=1,N+1
             do j=1,M
-                temp = ABS(vn(i,j)-v(i,j))/dt
+                temp = ABS(vn(i,j)-v(i,j))
                 if(temp.GT.errv) errv = temp
                 v(i,j) = vn(i,j)
             enddo
@@ -426,7 +428,7 @@
 
         do i=1,N+1
             do j=1,M+1
-                temp = ABS(pn(i,j)-p(i,j))/c2/dt
+                temp = ABS(pn(i,j)-p(i,j))/c2
                 if(temp.GT.errp) errp = temp
                 p(i,j) = pn(i,j)
             enddo
@@ -434,21 +436,17 @@
 
         do i=1,N+1
             do j=1,M+1
-                temp = ABS(Tn(i,j)-T(i,j))/dt
+                temp = ABS(Tn(i,j)-T(i,j))
                 if(temp.GT.errT) errT = temp
                 T(i,j) = Tn(i,j)
             enddo
         enddo
 
-        error = MAX(erru,(MAX(errv,errp)))
+        error = MAX(errp,MAX(erru,errv))
         if(itc.EQ.1) error = 100.0d0
         if(itc.EQ.2) error = 100.0d0
-!        if(itc.EQ.3) error = 100.0d0
-!        if(itc.EQ.4) error = 100.0d0
-!        if(itc.EQ.5) error = 100.0d0
-!        if(itc.EQ.6) error = 100.0d0
 
-        write(*,*) 'itc=',itc,'    |    error=',error
+        if(MOD(itc,500).EQ.0) write(*,*) 'itc=',itc,'    |    error=',error
 
         return
         end subroutine convergence
@@ -502,36 +500,79 @@
         enddo
         do i=2,N-1
             psi(i,2) = 0.25d0*psi(i,3)
-            psi(i,M-1) = 0.25d0*(psi(i,M-2)-2.0d0*dy)
+            psi(i,M-1) = 0.25d0*psi(i,M-2)
         enddo
 
 
         return
         end subroutine calpsi
 
-!!! output data file
-        subroutine output(N,M,X,Y,uc,vc,pc,Tc,psi)
-        implicit none
-        integer :: N, M, i, j
-        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), pc(N,M), Tc(N,M), psi(N,M)
 
-        open(unit=02,file='./cavity.dat',status='unknown')
+!!! validate results with reference
+        subroutine check(N,M,dx,dy,psi,u,v,psi_mid,u_max,v_max,x_loc,y_loc)
+        implicit none
+        integer :: N, M, mid_x, mid_y, i, j, temp_x, temp_y
+        real(8) :: dx, dy, psi_mid, u_max, v_max, x_loc, y_loc
+        real(8) :: psi(N,M), u(N,M), v(N,M)
+
+        mid_x = INT(N/2)
+        mid_y = INT(M/2)
+        psi_mid = psi(mid_x,mid_y)
+
+        u_max = 0.0d0
+        v_max = 0.0d0
+        temp_x = 0
+        temp_y = 0
+        do j=1,M
+            if(u(mid_x,j).GT.u_max) then
+                u_max = u(mid_x,j)
+                temp_y = j
+            endif
+        enddo
+        y_loc = (temp_y-1)*dy
+
+        do i=1,N
+            if(v(i,mid_y).GT.v_max) then
+                v_max = v(i,mid_y)
+                temp_x = i
+            endif
+        enddo
+        x_loc = (temp_x-1)*dx
+
+        return
+        end subroutine check
+
+
+!!! output data file
+        subroutine output(N,M,X,Y,uc,vc,psi,pc,Tc,k)
+        implicit none
+        integer :: N, M, i, j, k
+        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), psi(N,M), pc(N,M), Tc(N,M)
+        character*16 filename
+
+        filename='0000cavity.dat'
+        filename(1:1) = CHAR(ICHAR('0')+MOD(k/1000,10))
+        filename(2:2) = CHAR(ICHAR('0')+MOD(k/100,10))
+        filename(3:3) = CHAR(ICHAR('0')+MOD(k/10,10))
+        filename(4:4) = CHAR(ICHAR('0')+MOD(k,10))
+
+        open(unit=02,file=filename,status='unknown')
         write(02,101)
         write(02,102)
         write(02,103) N, M
         do j=1,M
             do i = 1,N
-                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), pc(i,j), Tc(i,j), psi(i,j)
+                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), psi(i,j), pc(i,j), Tc(i,j)
             enddo
         enddo
 
 100     format(2x,10(e12.6,'      '))
 101     format('Title="Buoyancy Driven Cavity Flow(Artificial Compressibility Methods)"')
-102     format('Variables=x,y,u,v,p,T,psi')
+102     format('Variables=x,y,u,v,psi,p,T')
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
         close(02)
-        write(*,*) 'Data export to ./cavity.dat file!'
+        write(*,*) 'Data export to',filename ,'file!'
 
         return
         end subroutine output

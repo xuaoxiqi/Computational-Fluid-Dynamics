@@ -24,7 +24,7 @@
         program main
         implicit none
         integer, parameter :: N=101, M=101
-        integer :: i, j, itc, itc_max
+        integer :: i, j, itc, itc_max, k
         real(8) :: dx, dy, Re, dt, eps, error
         real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M)
 
@@ -37,6 +37,7 @@
         itc = 0
         itc_max = 1e6
         error = 100.0d0
+        k = 0
 
         write(*,*) 'Start:'
 !!! set up initial flow field
@@ -62,10 +63,16 @@
 !!! check convergence
             call convergence(N,M,dt,RVOR,Rpsi,error,itc)
 
+!!! output preliminary results
+            if (MOD(itc,10000).EQ.0) then
+                k = k+1
+                call output(N,M,X,Y,u,v,psi,VOR,k)
+            endif
+
         enddo
 
 !!! output data file
-        call output(N,M,X,Y,u,v,psi,VOR)
+        call output(N,M,X,Y,u,v,psi,VOR,k)
 
         write(*,*)
         write(*,*) '************************************************************'
@@ -273,7 +280,9 @@
         error = MAX(errvor,errpsi)
         if(itc.EQ.1) error = 100.0d0
 
-        write(*,*) 'itc=',itc,'    |    error=',error
+        if (MOD(itc,500).EQ.0) then
+            write(*,*) 'itc=',itc,'    |    error=',error
+        endif
 
         return
         end subroutine convergence
@@ -281,12 +290,20 @@
 
 
 !!! output data file
-        subroutine output(N,M,X,Y,u,v,psi,VOR)
+        subroutine output(N,M,X,Y,u,v,psi,VOR,k)
         implicit none
-        integer :: N, M, i, j
+        integer :: N, M, i, j, k
         real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), psi(N,M)
 
-        open(unit=02,file='./cavity.dat',status='unknown')
+        character*16 filename
+
+        filename='0000cavity.dat'
+        filename(1:1) = CHAR(ICHAR('0')+MOD(k/1000,10))
+        filename(2:2) = CHAR(ICHAR('0')+MOD(k/100,10))
+        filename(3:3) = CHAR(ICHAR('0')+MOD(k/10,10))
+        filename(4:4) = CHAR(ICHAR('0')+MOD(k,10))
+
+        open(unit=02,file=filename,status='unknown')
         write(02,101)
         write(02,102)
         write(02,103) N, M
@@ -302,7 +319,7 @@
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
         close(02)
-        write(*,*) 'Data export to ./cavity.dat file!'
+        write(*,*) 'Data export to',filename,'file!'
 
         return
         end subroutine output
