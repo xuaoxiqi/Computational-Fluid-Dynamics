@@ -148,10 +148,10 @@
         do i=3,N-2
             do j=3,M-1
 
-                fw = 0.5*(u(i-1,j)+u(i,j))*dy
-                fe = 0.5*(u(i,j)+u(i+1,j))*dy
-                fs = 0.5*(v(i,j-1)+v(i+1,j-1))*dx
-                fn = 0.5*(v(i,j)+v(i+1,j))*dx
+                fw = 0.5d0*(u(i-1,j)+u(i,j))*dy
+                fe = 0.5d0*(u(i,j)+u(i+1,j))*dy
+                fs = 0.5d0*(v(i,j-1)+v(i+1,j-1))*dx
+                fn = 0.5d0*(v(i,j)+v(i+1,j))*dx
                 df = fe-fw+fn-fs
 
                 !!! common coefficient in 3rd-order upwind QUICK Scheme
@@ -191,12 +191,12 @@
 
         !!! compute exterior region boundary with physical boundary condition
         do i=2,N-1
-            un(i,1)=-un(i,2)
-            un(i,M+1)=2.0-un(i,M)
+            un(i,1) = -un(i,2)
+            un(i,M+1) = 2.0-un(i,M)
         enddo
         do j=1,M+1
-            un(1,j)=0.0
-            un(N,j)=0.0
+            un(1,j) = 0.0d0
+            un(N,j) = 0.0d0
         enddo
 !!!!!!!!!!!!!!!!!!!!!compute x-direction velocity component un!!!!!!!!!!!!!!!!!!!!!
 
@@ -248,12 +248,12 @@
 
        !!! compute exterior region boundary with physical boundary condition
         do i=2,N
-            vn(i,1)=0.0
-            vn(i,M)=0.0
+            vn(i,1) = 0.0
+            vn(i,M) = 0.0
         enddo
         do j=1,M
-            vn(1,j)=-vn(2,j)
-            vn(N+1,j)=-vn(N,j)
+            vn(1,j) = -vn(2,j)
+            vn(N+1,j) = -vn(N,j)
         enddo
 !!!!!!!!!!!!!!!!!!!!!compute y-direction velocity component vn!!!!!!!!!!!!!!!!!!!!!
 
@@ -268,9 +268,9 @@
         real(8) :: alpha, x
 
         if(x.GT.0.0d0) then
-            alpha=1.0d0
+            alpha = 1.0d0
         elseif(x.LT.0.0d0) then
-            alpha=0.0d0
+            alpha = 0.0d0
         endif
 
         return
@@ -287,8 +287,8 @@
 
         miu = 1.0d0/Re
 
-        aw = miu+MAX(0.5*(u(i-1,j)+u(i,j))*dy,0.0)
-        ae = miu+MAX(0.0,-0.5*(u(i,j)+u(i+1,j))*dy)
+        aw = miu+MAX(0.5d0*(u(i-1,j)+u(i,j))*dy,0.0d0)
+        ae = miu+MAX(0.0d0,-0.5d0*(u(i,j)+u(i+1,j))*dy)
         as = miu+MAX(0.5*(v(i,j-1)+v(i+1,j-1))*dx,0.0)
         an = miu+MAX(0.0,-0.5*(v(i,j)+v(i+1,j))*dx)
         df = 0.5*(u(i+1,j)-u(i-1,j))*dy+0.5*(v(i,j)+v(i+1,j)-v(i,j-1)-v(i+1,j-1))*dx
