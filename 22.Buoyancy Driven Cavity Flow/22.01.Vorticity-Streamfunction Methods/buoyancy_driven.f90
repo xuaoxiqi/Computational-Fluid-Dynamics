@@ -25,25 +25,23 @@
 
         program main
         implicit none
-        integer, parameter :: N=101, M=101
+        integer, parameter :: N=81, M=81
         integer :: i, j, itc, itc_max, k
         real(8) :: dx, dy, Pr, Ra, dt, eps, error
         real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M), T(N,M)
-        real(8) :: psi_mid, u_max, v_max, x_loc, y_loc
 
 !!! input initial data
         Pr = 0.71d0
-        Ra = 1e5
+        Ra = 1e6
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
-        dt = 5*1e-6
-        eps = 1e-4
+        dt = 1e-6
+        eps = 1e-8
         itc = 0
-        itc_max = 7*1e6
+        itc_max = 1e8
         error = 100.0d0
         k = 0
 
-        write(*,*) 'Start:'
 !!! set up initial flow field
         call initial(N,M,dx,dy,X,Y,u,v,psi,vor,RVOR,Rpsi,T)
 
@@ -70,36 +68,36 @@
             call convergence(N,M,dt,RVOR,Rpsi,error,itc)
 
 !!! output preliminary results
-            if (MOD(itc,10000).EQ.0) then
+            if (MOD(itc,1000000).EQ.0) then
                 k = k+1
-                call output(N,M,X,Y,u,v,psi,VOR,T,k)
+                call output(N,M,X,Y,u,v,psi,T,k)
             endif
 
         enddo
 
-!!! validate results with reference
-        call check(N,M,dx,dy,psi,u,v,psi_mid,u_max,v_max,x_loc,y_loc)
-
 !!! output data file
-        call output(N,M,X,Y,u,v,psi,VOR,T,k)
+        call output(N,M,X,Y,u,v,psi,T,k)
 
-        write(*,*)
-        write(*,*) '************************************************************'
-        write(*,*) 'This program sloves Buoyancy Driven Cavity Flow problem'
-        write(*,*) 'using Vorticity-Streamfunction Methods'
-        write(*,*) 'N =',N,',       M =',M
-        write(*,*) 'Pr=',Pr
-        write(*,*) 'Ra=',Ra
-        write(*,*) 'dt =', dt
-        write(*,*) 'eps =',eps
-        write(*,*) 'itc =',itc
-        write(*,*) 'Developing time=',dt*itc,'s'
-        write(*,*)
-        write(*,*) 'psi_mid =',psi_mid
-        write(*,*) 'u_max =',u_max,'at y =',y_loc
-        write(*,*) 'v_max =',v_max,'at x =',x_loc
-        write(*,*) '************************************************************'
-        write(*,*)
+        open(unit=03,file='results.txt',status='unknown')
+
+        write(03,*)
+        write(03,*) '************************************************************'
+        write(03,*) 'This program sloves Buoyancy Driven Cavity Flow problem'
+        write(03,*) 'using Vorticity-Streamfunction Methods'
+        write(03,*) 'N =',N,',       M =',M
+        write(03,*) 'Pr=',Pr
+        write(03,*) 'Ra=',Ra
+        write(03,*) 'dt =', dt
+        write(03,*) 'eps =',eps
+        write(03,*) 'itc =',itc
+        write(03,*) 'Developing time=',dt*itc,'s'
+        write(03,*) '************************************************************'
+        write(03,*)
+
+!!! validate results with reference
+        call validation(N,M,dx,dy,u,v,psi,T)
+
+        close(03)
 
         stop
         end program main
@@ -333,20 +331,27 @@
         error = MAX(errvor,errpsi)
         if(itc.EQ.1) error = 100.0d0
 
-        if (MOD(itc,500).EQ.0) then
-            write(*,*) 'itc=',itc,'    |    error=',error
+        open(unit=01,file='error.dat',status='unknown',position='append')
+
+        if (MOD(itc,2000).EQ.0) then
+            write(01,*) itc,' ',error
         endif
+
+        close(01)
 
         return
         end subroutine convergence
 
 
 !!! validate results with reference
-        subroutine check(N,M,dx,dy,psi,u,v,psi_mid,u_max,v_max,x_loc,y_loc)
+        subroutine validation(N,M,dx,dy,u,v,psi,T)
         implicit none
-        integer :: N, M, mid_x, mid_y, i, j, temp_x, temp_y
-        real(8) :: dx, dy, psi_mid, u_max, v_max, x_loc, y_loc
-        real(8) :: psi(N,M), u(N,M), v(N,M)
+        integer :: N, M, i, j
+        integer :: mid_x, mid_y, temp, temp_max, temp_min
+        real(8) :: dx, dy
+        real(8) :: psi_mid, u_max, v_max, u_max_loc , v_max_loc, Nu_max, Nu_min, Nu_max_loc, Nu_min_loc
+        real(8) :: u(N,M), v(N,M), psi(N,M), T(N,M)
+        real(8) :: Nu(N)
 
         mid_x = INT(N/2)
         mid_y = INT(M/2)
@@ -354,32 +359,59 @@
 
         u_max = 0.0d0
         v_max = 0.0d0
-        temp_x = 0
-        temp_y = 0
+        Nu_max = 0.0d0
+        Nu_min = 100.0d0
+        temp = 0
+        temp_max = 0
+        temp_min = 0
+
         do j=1,M
             if(u(mid_x,j).GT.u_max) then
                 u_max = u(mid_x,j)
-                temp_y = j
+                temp = j
             endif
         enddo
-        y_loc = (temp_y-1)*dy
+        u_max_loc = (temp-1)*dy
 
         do i=1,N
             if(v(i,mid_y).GT.v_max) then
                 v_max = v(i,mid_y)
-                temp_x = i
+                temp = i
             endif
         enddo
-        x_loc = (temp_x-1)*dx
+        v_max_loc = (temp-1)*dx
+
+        do j=1,M
+            !!!Nu(j) = -(-11.0d0*T(1,j)+18.0d0*T(2,j)-9.0d0*T(3,j)+2.0d0*T(4,j))/6.0d0/dy
+            !!!Nu(j) = -(-3.0d0*T(1,j)+4.0d0*T(2,j)-T(3,j))/2.0d0/dy
+            Nu(j) = -(T(2,j)-T(1,j))/dx
+            if(Nu(j).GT.Nu_max) then
+                Nu_max = Nu(j)
+                temp_max = j
+            elseif(Nu(i).LT.Nu_min) then
+                Nu_min = Nu(j)
+                temp_min = j
+            endif
+        enddo
+        Nu_max_loc = (temp_max-1)*dx
+        Nu_min_loc = (temp_min-1)*dx
+
+        write(03,*)
+        write(03,*) 'psi_mid =',psi_mid
+        write(03,*) 'u_max =',u_max,'at y =',u_max_loc
+        write(03,*) 'v_max =',v_max,'at x =',v_max_loc
+        write(03,*) 'Nu_max =',Nu_max,'at y=',Nu_max_loc
+        write(03,*) 'Nu_min =',Nu_min,'at y=',Nu_min_loc
+        write(03,*)
 
         return
-        end subroutine check
+        end subroutine validation
 
 !!! output data file
-        subroutine output(N,M,X,Y,u,v,psi,VOR,T,k)
+        subroutine output(N,M,X,Y,u,v,psi,T,k)
         implicit none
         integer :: N, M, i, j, k
-        real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M), VOR(N,M), T(N,M)
+        real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M),T(N,M)
         character*16 filename
 
         filename='0000cavity.dat'
@@ -394,17 +426,16 @@
         write(02,103) N, M
         do j=1,M
             do i = 1,N
-                write(02,100) X(i), Y(j), u(i,j), v(i,j), psi(i,j), VOR(i,j), T(i,j)
+                write(02,100) X(i), Y(j), u(i,j), v(i,j), psi(i,j), T(i,j)
             enddo
         enddo
 
 100     format(2x,10(e12.6,'      '))
-101     format('Title="Lid Driven Cavity Flow(Vorticity-Streamfunction Methods)"')
-102     format('Variables=x,y,u,v,psi,VOR,T')
+101     format('Title="Buoyancy Driven Cavity Flow(Vorticity-Streamfunction Methods)"')
+102     format('Variables=x,y,u,v,psi,T')
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
         close(02)
-        write(*,*) 'Data export to',filename,'file!'
 
         return
         end subroutine output

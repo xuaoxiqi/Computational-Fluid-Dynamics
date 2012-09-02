@@ -19,7 +19,7 @@
 
         program main
         implicit none
-        integer, parameter :: N=101,M=101
+        integer, parameter :: N=81,M=81
         integer :: itc, itc_max, k
         real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),psi(N,M),X(N), Y(M)
         real(8) :: un(N,M+1),vn(N+1,M),pn(N+1,M+1),uc(N,M),vc(N,M),pc(N,M)
@@ -28,23 +28,22 @@
 !!! input initial data
         c = 1.5d0
         c2 = c*c   ! c2 = 2.25d0
-        Re = 100.0d0
-        dt = 1e-3
+        Re = 10000.0d0
+        dt = 1e-5
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
-        eps = 1e-4
+        eps = 1e-8
         itc = 0
-        itc_max = 1e6
+        itc_max = 1e7
         error=100.00d0
         k = 0
 
-        write(*,*) 'Start:'
 !!! set up initial flow field
         call initial(N,M,dx,dy,X,Y,u,v,p,psi)
 
         do while((error.GT.eps).AND.(itc.LT.itc_max))
 
-            error=0.0
+            error=0.0d0
 
 !!! Solve Momentum Equation with QUICK Scheme
             call quick(N,M,dx,dy,dt,Re,u,v,p,un,vn)
@@ -56,11 +55,11 @@
             call check(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
 
 !!! output preliminary results
-            if (MOD(itc,10000).EQ.0) then
+            if (MOD(itc,100000).EQ.0) then
                 call caluvp(N,M,u,v,p,uc,vc,pc)
                 call calpsi(N,M,dx,dy,uc,vc,psi)
                 k = k+1
-                call output(N,M,X,Y,uc,vc,psi,pc,k)
+                call output(N,M,X,Y,uc,vc,psi,k)
             endif
 
         enddo
@@ -72,7 +71,7 @@
         call calpsi(N,M,dx,dy,uc,vc,psi)
 
 !!! output data file
-        call output(N,M,X,Y,uc,vc,psi,pc,k)
+        call output(N,M,X,Y,uc,vc,psi,k)
 
         write(*,*)
         write(*,*) '************************************************************'
@@ -289,9 +288,9 @@
 
         aw = miu+MAX(0.5d0*(u(i-1,j)+u(i,j))*dy,0.0d0)
         ae = miu+MAX(0.0d0,-0.5d0*(u(i,j)+u(i+1,j))*dy)
-        as = miu+MAX(0.5*(v(i,j-1)+v(i+1,j-1))*dx,0.0)
-        an = miu+MAX(0.0,-0.5*(v(i,j)+v(i+1,j))*dx)
-        df = 0.5*(u(i+1,j)-u(i-1,j))*dy+0.5*(v(i,j)+v(i+1,j)-v(i,j-1)-v(i+1,j-1))*dx
+        as = miu+MAX(0.5d0*(v(i,j-1)+v(i+1,j-1))*dx,0.0d0)
+        an = miu+MAX(0.0d0,-0.5d0*(v(i,j)+v(i+1,j))*dx)
+        df = 0.5d0*(u(i+1,j)-u(i-1,j))*dy+0.5*(v(i,j)+v(i+1,j)-v(i,j-1)-v(i+1,j-1))*dx
         ap = aw+ae+as+an+df
 
         un(i,j) = u(i,j)+dt/dx/dy*(-ap*u(i,j)+aw*u(i-1,j)+ae*u(i+1,j)+as*u(i,j-1)+an*u(i,j+1))-dt*(p(i+1,j)-p(i,j))/dx
@@ -310,10 +309,10 @@
 
         miu = 1.0d0/Re
 
-        aw = miu+MAX(0.5*(u(i-1,j)+u(i-1,j+1))*dy,0.0)
-        ae = miu+MAX(0.0,-0.5*(u(i,j)+u(i,j+1))*dy)
-        as = miu+MAX(0.5*(v(i,j-1)+v(i,j))*dx,0.0)
-        an = miu+MAX(0.0,-0.5*(v(i,j)+v(i,j+1))*dx)
+        aw = miu+MAX(0.5d0*(u(i-1,j)+u(i-1,j+1))*dy,0.0d0)
+        ae = miu+MAX(0.0d0,-0.5d0*(u(i,j)+u(i,j+1))*dy)
+        as = miu+MAX(0.5d0*(v(i,j-1)+v(i,j))*dx,0.0d0)
+        an = miu+MAX(0.0d0,-0.5d0*(v(i,j)+v(i,j+1))*dx)
         df = 0.5d0*(u(i,j)+u(i,j+1)-u(i-1,j)-u(i-1,j+1))*dy+0.5*(v(i,j+1)-v(i,j-1))*dx
         ap = aw+ae+as+an+df
 
@@ -389,9 +388,13 @@
 
         error = MAX(erru,(MAX(errv,errp)))
 
-        if (MOD(itc,500).EQ.0) then
-            write(*,*) 'itc=',itc,'    |    error=',error
+        open(unit=01,file='error.dat',status='unknown',position='append')
+
+        if (MOD(itc,2000).EQ.0) then
+            write(01,*) itc,' ',error
         endif
+
+        close(01)
 
         return
         end subroutine check
@@ -452,10 +455,10 @@
         end subroutine calpsi
 
 !!! output data file
-        subroutine output(N,M,X,Y,uc,vc,psi,pc,k)
+        subroutine output(N,M,X,Y,uc,vc,psi,k)
         implicit none
         integer :: N, M, i, j, k
-        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), psi(N,M), pc(N,M)
+        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), psi(N,M)
 
         character*16 filename
 
@@ -471,17 +474,16 @@
         write(02,103) N, M
         do j=1,M
             do i = 1,N
-                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), psi(i,j), pc(i,j)
+                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), psi(i,j)
             enddo
         enddo
 
 100     format(2x,10(e12.6,'      '))
 101     format('Title="Lid Driven Cavity Flow(Artificial Compressibility Methods)"')
-102     format('Variables=x,y,u,v,psi,pc')
+102     format('Variables=x,y,u,v,psi')
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
         close(02)
-        write(*,*) 'Data export to',filename,'file!'
 
         return
         end subroutine output
