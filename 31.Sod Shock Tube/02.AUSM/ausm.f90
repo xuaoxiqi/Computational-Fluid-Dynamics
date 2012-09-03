@@ -24,27 +24,27 @@
        implicit none
        integer, parameter :: N=1000
        integer :: i, itert, itc
-       real(8), parameter :: gamma=1.4, R=287.14
+       real(8), parameter :: gamma=1.4d0, R=287.14d0
        real(8) :: X(0:N+2), p(0:N+2), a(0:N+2), u(0:N+2), u1(0:N+2), u2(0:N+2), u3(0:N+2), f1(0:N+1), f2(0:N+1), f3(0:N+1)
        real(8) :: x1, x2, dx, t, dt, lambda, diaph
        real(8) :: pl, pr, ul, ur, al, ar, rul, rur, retl, retr,rhol, rhor
 
        !!! input initial data
-       x1 = 0.0
-       x2 = 1.0
-       dx = (x2-x1)/N
-       t = 0.25
+       x1 = 0.0d0
+       x2 = 1.0d0
+       dx = (x2-x1)/float(N)
+       t = 0.25d0
        dt = 1e-4
        itert = NINT(t/dt)
        lambda = dt/dx
-       diaph = 0.5
+       diaph = 0.5d0
        itc = 0
-       pl = 1.0
-       pr = 0.1
-       rhol = 1.0
-       rhor =0.125
-       ul = 0.0
-       ur = 0.0
+       pl = 1.0d0
+       pr = 0.1d0
+       rhol = 1.0d0
+       rhor =0.125d0
+       ul = 0.0d0
+       ur = 0.0d0
        al = SQRT(gamma*pl/rhol)
        ar = SQRT(gamma*pr/rhor)
 
@@ -54,8 +54,8 @@
 !!!    E = e+0.5*u^2        e = p/rho/(gamma-1)
        rul = rhol*ul
        rur = rhor*ur
-       retl = 0.5*rul*ul+pl/(gamma-1.0)
-       retr = 0.5*rur*ur+pr/(gamma-1.0)
+       retl = 0.5d0*rul*ul+pl/(gamma-1.0d0)
+       retr = 0.5d0*rur*ur+pr/(gamma-1.0d0)
 
        !!! construct initial conditions
        call initial(N,X,dx,diaph,rhol,rhor,rul,rur,retl,retr,u1,u2,u3)
@@ -89,7 +89,7 @@
        write(02,102)
        write(02,103) N
        do i = 1,N+1
-                     p(i) = (gamma-1.0)*(u3(i)-0.5*u2(i)*u2(i)/u1(i))
+                     p(i) = (gamma-1.0d0)*(u3(i)-0.5d0*u2(i)*u2(i)/u1(i))
                      a(i) = SQRT(gamma*p(i)/u1(i))
                      u(i) = u2(i)/u1(i)
                      write(02,100) X(i), u1(i), p(i) ,u(i)
@@ -98,7 +98,7 @@
 100    format(2x,10(e12.6,'      '))
 101    format('Title="Sod Shock Tube"')
 102    format('Variables=x,rho,p,u')
-103    format('zone',1x'i=',1x,i5,2x,'f=point')
+103    format('zone',1x,'i=',1x,i5,2x,'f=point')
 
        close(02)
        write(*,*) 'Data export to ./shock_tube_AUSM.dat file!'
@@ -142,8 +142,8 @@
        rhor = rr
        ul = rul/rhol
        ur = rur/rhor
-       pl = (gamma-1.0)*(retl - 0.5*rul*rul/rhol)
-       pr = (gamma-1.0)*(retr - 0.5*rur*rur/rhor)
+       pl = (gamma-1.0d0)*(retl - 0.5d0*rul*rul/rhol)
+       pr = (gamma-1.0d0)*(retr - 0.5d0*rur*rur/rhor)
        hl = (retl+pl)/rhol
        hr = (retr+pr)/rhor
        al = sqrt(gamma*pl/rhol)
@@ -152,12 +152,12 @@
        Mr = ur/ar
 
        !!! Compute positive splitting of M and p.
-       if(Ml.LE.-1.0) then
-              Mp = 0.0
-              pp = 0.0
-       elseif(Ml.lt.1.0) then
-              Mp = 0.25*(Ml+1.0)*(Ml+1.0)
-              pp = 0.5*(1.0+Ml)*pl        !Choice One
+       if(Ml.LE.-1.0d0) then
+              Mp = 0.0d0
+              pp = 0.0d0
+       elseif(Ml.lt.1.0d0) then
+              Mp = 0.25d0*(Ml+1.0d0)*(Ml+1.0d0)
+              pp = 0.5d0*(1.0d0+Ml)*pl        !Choice One
        !      pp = 0.25*pl*(1.0+Ml)*(1.0+Ml)*(2.0-Ml)   !Choice Two
        else
               Mp = Ml
@@ -165,25 +165,25 @@
        endif
 
        !!! Compute negative splitting of M and p.
-       if(Mr.LE.-1.0) then
+       if(Mr.LE.-1.0d0) then
               Mm = Mr
               pm = pr
-       elseif(Mr.LT.1.0) then
-              Mm = -0.25*(Mr-1.0)*(Mr-1.0)
-              pm = 0.5*(1.0-Mr)*pr        !Choice One
+       elseif(Mr.LT.1.0d0) then
+              Mm = -0.25d0*(Mr-1.0d0)*(Mr-1.0d0)
+              pm = 0.5d0*(1.0d0-Mr)*pr        !Choice One
        !      pm = 0.25*pr*(1.0-Mr)*(1.0-Mr)*(2.0+Mr)   !Choice Two
        else
-              Mm = 0.0
-              pm = 0.0
+              Mm = 0.0d0
+              pm = 0.0d0
        endif
 
        Mpm = Mp + Mm
 
        !!! Compute conserative numerical fluxes.
        !!! Splitting the flux vector F into a convective component F^(c) and a pressure component F^(p)
-       f1 = MAX(0.0,Mpm)*rhol*al + MIN(0.0,Mpm)*rhor*ar
-       f2 = MAX(0.0,Mpm)*rul*al + MIN(0.0,Mpm)*rur*ar + pp + pm
-       f3 = MAX(0.0,Mpm)*rhol*hl*al + MIN(0.0,Mpm)*rhor*hr*ar
+       f1 = MAX(0.0d0,Mpm)*rhol*al + MIN(0.0d0,Mpm)*rhor*ar
+       f2 = MAX(0.0d0,Mpm)*rul*al + MIN(0.0d0,Mpm)*rur*ar + pp + pm
+       f3 = MAX(0.0d0,Mpm)*rhol*hl*al + MIN(0.0d0,Mpm)*rhor*hr*ar
 
        return
        end subroutine AUSM

@@ -25,27 +25,27 @@
        implicit none
        integer, parameter :: N=1000
        integer :: i, itert, itc
-       real(8), parameter :: gamma=1.4, R=287.14
+       real(8), parameter :: gamma=1.4d0, R=287.14d0
        real(8) :: X(0:N+2), p(0:N+2), a(0:N+2), u(0:N+2), u1(0:N+2), u2(0:N+2), u3(0:N+2), f1(0:N+1), f2(0:N+1), f3(0:N+1)
        real(8) :: x1, x2, dx, t, dt, lambda, diaph
        real(8) :: pl, pr, ul, ur, al, ar, rul, rur, retl, retr,rhol, rhor
 
        !!! input initial data
-       x1 = 0.0
-       x2 = 1.0
-       dx = (x2-x1)/N
-       t = 0.25
+       x1 = 0.0d0
+       x2 = 1.0d0
+       dx = (x2-x1)/float(N)
+       t = 0.25d0
        dt = 1e-4
        itert = NINT(t/dt)
        lambda = dt/dx
-       diaph = 0.5
+       diaph = 0.5d0
        itc = 0
-       pl = 1.0
-       pr = 0.1
-       rhol = 1.0
-       rhor =0.125
-       ul = 0.0
-       ur = 0.0
+       pl = 1.0d0
+       pr = 0.1d0
+       rhol = 1.0d0
+       rhor =0.125d0
+       ul = 0.0d0
+       ur = 0.0d0
        al = SQRT(gamma*pl/rhol)
        ar = SQRT(gamma*pr/rhor)
 
@@ -55,13 +55,13 @@
 !!!    E = e+0.5*u^2        e = p/rho/(gamma-1)
        rul = rhol*ul
        rur = rhor*ur
-       retl = 0.5*rul*ul+pl/(gamma-1.0)
-       retr = 0.5*rur*ur+pr/(gamma-1.0)
+       retl = 0.5d0*rul*ul+pl/(gamma-1.0d0)
+       retr = 0.5d0*rur*ur+pr/(gamma-1.0d0)
 
        !!! construct initial conditions
        call initial(N,X,dx,diaph,rhol,rhor,rul,rur,retl,retr,u1,u2,u3)
 
-       t = 0
+       t = 0.0d0
        do itc =1,itert
               !!! find conserative numerical fluxes
               t = t+dt
@@ -75,7 +75,7 @@
                      u2(i) = u2(i)-lambda*(f2(i)-f2(i-1))
                      u3(i) = u3(i)-lambda*(f3(i)-f3(i-1))
                      u(i) = u2(i)/u1(i)
-                     p(i) = (gamma-1.0)*(u3(i)-0.5*u2(i)*u2(i)/u1(i))
+                     p(i) = (gamma-1.0d0)*(u3(i)-0.5d0*u2(i)*u2(i)/u1(i))
                      a(i) = SQRT(gamma*p(i)/u1(i))
               enddo
        enddo
@@ -89,8 +89,8 @@
        write(02,101)
        write(02,102)
        write(02,103) N
-       do i = 1,N+1
-                     p(i) = (gamma-1.0)*(u3(i)-0.5*u2(i)*u2(i)/u1(i))
+       do i = 1,N
+                     p(i) = (gamma-1.0d0)*(u3(i)-0.5d0*u2(i)*u2(i)/u1(i))
                      a(i) = SQRT(gamma*p(i)/u1(i))
                      u(i) = u2(i)/u1(i)
                      write(02,100) X(i), u1(i), p(i) ,u(i)
@@ -99,11 +99,10 @@
 100    format(2x,10(e12.6,'      '))
 101    format('Title="Sod Shock Tube"')
 102    format('Variables=x,rho,p,u')
-103    format('zone',1x'i=',1x,i5,2x,'f=point')
+103    format('zone',1x,'i=',1x,i5,2x,'f=point')
 
        close(02)
        write(*,*) 'Data export to ./shock_tube_vanLeer.dat file!'
-
 
        stop
        end program main
@@ -147,8 +146,8 @@
        rhor = rr
        ul = rul/rhol
        ur = rur/rhor
-       pl = (gamma-1)*(retl-0.5*rul*rul/rhol)
-       pr = (gamma-1)*(retr-0.5*rur*rur/rhor)
+       pl = (gamma-1.0d0)*(retl-0.5d0*rul*rul/rhol)
+       pr = (gamma-1.0d0)*(retr-0.5d0*rur*rur/rhor)
        hl = (retl+pl)/rhol
        hr = (retr+pr)/rhor
        al = SQRT(gamma*pl/rhol)
@@ -157,16 +156,16 @@
        Mr = ur/ar
 
        !!! compute positive flux splitting
-       if(Ml.LE.-1.0) then
-              fp1 = 0.0
-              fp2 = 0.0
-              fp3 = 0.0
-       elseif(Ml.LT.1.0) then
-              Mp = 0.25*(Ml+1.0)*(Ml+1.0)
-              tp = (gamma-1.0)*ul+2.0*al
+       if(Ml.LE.-1.0d0) then
+              fp1 = 0.0d0
+              fp2 = 0.0d0
+              fp3 = 0.0d0
+       elseif(Ml.LT.1.0d0) then
+              Mp = 0.25d0*(Ml+1.0d0)*(Ml+1.0d0)
+              tp = (gamma-1.0d0)*ul+2.0d0*al
               fp1 = rhol*al*Mp   !!! 0.25*rho*a*(1+M)^2
               fp2 = fp1*tp/gamma   !!! 0.25*rho*a*(1+M)^2*[2*a/gamma*((gamma-1)/2*M+1)]
-              fp3 = 0.5*fp1*tp*tp/(gamma*gamma-1.0)   !!! 0.25*rho*a*(1+M)^2*[2*a^2/(gamma^2-1)*((gamma-1)/2*M+1)^2]
+              fp3 = 0.5d0*fp1*tp*tp/(gamma*gamma-1.0d0)   !!! 0.25*rho*a*(1+M)^2*[2*a^2/(gamma^2-1)*((gamma-1)/2*M+1)^2]
        else
               fp1 = rul   !!! rho*u
               fp2 = rul*ul+pl   !!! rho*u*u+p
@@ -174,20 +173,20 @@
        endif
 
        !!! compute negative flux splitting
-       if(Mr.LE.-1.0) then
+       if(Mr.LE.-1.0d0) then
               fm1 = rur
               fm2 = rur*ur+pr
               fm3 = rhor*hr*ur
-       elseif(Mr.LT.1.0) then
-              Mm = -0.25*(Mr-1.0)*(Mr-1.0)
-              tm = (gamma-1.0)*ur-2.0*ar
+       elseif(Mr.LT.1.0d0) then
+              Mm = -0.25d0*(Mr-1.0d0)*(Mr-1.0d0)
+              tm = (gamma-1.0d0)*ur-2.0d0*ar
               fm1 = rhor*ar*Mm   !!! -0.25*rho*a*(1-M)^2
               fm2 = fm1*tm/gamma   !!! -0.25*rho*a*(1-M)^2*[2*a/gamma*((gamma-1)/2*M-1)]
-              fm3 = 0.5*fm1*tm*tm/(gamma*gamma-1.0)   !!! -0.25*rho*a*(1-M)^2*[2*a^2/(gamma^2-1)*((gamma-1)/2*M-1)^2]
+              fm3 = 0.5d0*fm1*tm*tm/(gamma*gamma-1.0d0)   !!! -0.25*rho*a*(1-M)^2*[2*a^2/(gamma^2-1)*((gamma-1)/2*M-1)^2]
        else
-              fm1 = 0.0
-              fm2 = 0.0
-              fm3 = 0.0
+              fm1 = 0.0d0
+              fm2 = 0.0d0
+              fm3 = 0.0d0
        endif
 
        !!! compute conserative numerical fluxes
