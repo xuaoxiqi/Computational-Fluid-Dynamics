@@ -28,7 +28,7 @@
 !!! input initial data
         c = 1.5d0
         c2 = c*c   ! c2 = 2.25d0
-        Re = 10000.0d0
+        Re = 100.0d0
         dt = 1e-5
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
@@ -141,7 +141,7 @@
         real(8) :: fw, fe, fs, fn, df, aw, aww, ae, aee, as, ass, an, ann,ap
         real(8) :: alpha
 
-        miu = 1.0/Re
+        miu = 1.0d0/Re
 
 !!!!!!!!!!!!!!!!!!!!!compute x-direction velocity component un!!!!!!!!!!!!!!!!!!!!!
         do i=3,N-2
@@ -171,21 +171,15 @@
         enddo
 
         !!! compute interior region boundary with 1st-order upwind discrete scheme
-        j=2
+
         do i=3,N-2
-            call upbound_u(N,M,dx,dy,dt,Re,u,v,p,un,i,j)
+            call upbound_u(N,M,dx,dy,dt,Re,u,v,p,un,i,2)
+            call upbound_u(N,M,dx,dy,dt,Re,u,v,p,un,i,M)
         enddo
-        j=M
-        do i=3,N-2
-            call upbound_u(N,M,dx,dy,dt,Re,u,v,p,un,i,j)
-        enddo
-        i=2
+
         do j=2,M
-            call upbound_u(N,M,dx,dy,dt,Re,u,v,p,un,i,j)
-        enddo
-        i=N-1
-        do j=2,M
-            call upbound_u(N,M,dx,dy,dt,Re,u,v,p,un,i,j)
+            call upbound_u(N,M,dx,dy,dt,Re,u,v,p,un,2,j)
+            call upbound_u(N,M,dx,dy,dt,Re,u,v,p,un,N-1,j)
         enddo
 
         !!! compute exterior region boundary with physical boundary condition
@@ -228,27 +222,20 @@
         enddo
 
         !!! compute interior region boundary with 1st-order upwind discrete scheme
-        j=2
         do i=3,N-1
-            call upbound_v(N,M,dx,dy,dt,Re,u,v,p,vn,i,j)
+            call upbound_v(N,M,dx,dy,dt,Re,u,v,p,vn,i,2)
+            call upbound_v(N,M,dx,dy,dt,Re,u,v,p,vn,i,M-1)
         enddo
-        j=M-1
-        do i=3,N-1
-            call upbound_v(N,M,dx,dy,dt,Re,u,v,p,vn,i,j)
-        enddo
-        i=2
+
         do j=2,M-1
-            call upbound_v(N,M,dx,dy,dt,Re,u,v,p,vn,i,j)
-        enddo
-        i=N
-        do j=2,M-1
-            call upbound_v(N,M,dx,dy,dt,Re,u,v,p,vn,i,j)
+            call upbound_v(N,M,dx,dy,dt,Re,u,v,p,vn,2,j)
+            call upbound_v(N,M,dx,dy,dt,Re,u,v,p,vn,N,j)
         enddo
 
        !!! compute exterior region boundary with physical boundary condition
         do i=2,N
-            vn(i,1) = 0.0
-            vn(i,M) = 0.0
+            vn(i,1) = 0.0d0
+            vn(i,M) = 0.0d0
         enddo
         do j=1,M
             vn(1,j) = -vn(2,j)
