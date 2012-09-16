@@ -1,4 +1,4 @@
-
+﻿
 
 !!!    This program sloves Buoyancy Driven Cavity Flow problem using Vorticity-Streamfunction Methods
 !!!    This work is licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License.
@@ -15,14 +15,6 @@
 !!!         |---------------|
 !!!           Adiabatic Wall
 
-!!!    u(i,j), v(i,j)-------------velocity function
-!!!    psi(i,j)-------------------stream function
-!!!    vor(i,j)-------------------vorticity function
-!!!    Rpsi(i,j)------------------psi^{n+1}_{i,j} - psi^{n}_{i,j}
-!!!    RVOR(i,j)------------------(vor^{n+1}_{i,j}-vor^{n}_{i,j})/dt
-!!!    T(i,j))--------------------Temperature field
-!!!    RT(i,j)--------------------(T^{n+1}_{i,j}-T^{n}_{i,j})/dt
-
         program main
         implicit none
         integer, parameter :: N=81, M=81
@@ -32,10 +24,10 @@
 
 !!! input initial data
         Pr = 0.71d0
-        Ra = 1e6
+        Ra = 1e4
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
-        dt = 1e-6
+        dt = 5*1e-5
         eps = 1e-8
         itc = 0
         itc_max = 1e8
@@ -47,28 +39,22 @@
 
         do while((error.GT.eps).AND.(itc.LT.itc_max))
 !!! solve vorticity equation
-            call solvor(N,M,dx,dy,Pr,Ra,dt,u,v,vor,RVOR,T)
+            call solvor(N,M,dx,dy,Pr,Ra,dt,u,v,vor,RVOR,T,psi)
 
 !!! solve Streamfunction equation
             call solpsi(N,M,dx,dy,vor,psi,Rpsi)
-
-!!! updates the values of sream function at boundary points
-            call bcpsi(N,M,dy,psi)
-
-!!! updates the boundary condition for vorticity
-            call bcvor(N,M,dx,dy,vor,psi)
 
 !!! compute velocity components u and v
             call caluv(N,M,dx,dy,psi,u,v)
 
 !!! compute temperature field
-            call calt(N,M,dt,dx,dy,u,v,T)
+            call calT(N,M,dt,dx,dy,u,v,T)
 
 !!! check convergence
             call convergence(N,M,dt,RVOR,Rpsi,error,itc)
 
 !!! output preliminary results
-            if (MOD(itc,1000000).EQ.0) then
+            if (MOD(itc,10000).EQ.0) then
                 k = k+1
                 call output(N,M,X,Y,u,v,psi,T,k)
             endif
@@ -76,6 +62,7 @@
         enddo
 
 !!! output data file
+        k = k+1
         call output(N,M,X,Y,u,v,psi,T,k)
 
         open(unit=03,file='results.txt',status='unknown')
@@ -93,9 +80,6 @@
         write(03,*) 'Developing time=',dt*itc,'s'
         write(03,*) '************************************************************'
         write(03,*)
-
-!!! validate results with reference
-        call validation(N,M,dx,dy,u,v,psi,T)
 
         close(03)
 
@@ -138,13 +122,54 @@
 
 
 !!! solve vorticity equation
-        subroutine solvor(N,M,dx,dy,Pr,Ra,dt,u,v,vor,RVOR,T)
+        subroutine solvor(N,M,dx,dy,Pr,Ra,dt,u,v,vor,RVOR,T,psi)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy, dt, Pr, Ra, dvorx2, dvory2, dvorx1, dvory1
+        real(8) :: vor(N,M), u(N,M), v(N,M), RVOR(N,M), T(N,M), psi(N,M)
+        real(8) :: vori(N,M)
+
+        call RESvor(N,M,dx,dy,Pr,Ra,dt,u,v,vor,RVOR,T)
+        do i=2,N-1
+            do j=2,M-1
+                vori(i,j) = vor(i,j)+0.25d0*dt*RVOR(i,j)
+            enddo
+        enddo
+        call bcvor(N,M,dx,dy,vori,psi)
+
+        call RESvor(N,M,dx,dy,Pr,Ra,dt,u,v,vori,RVOR,T)
+        do i=2,N-1
+            do j=2,M-1
+                vori(i,j) = vor(i,j)+1.0d0/3.0d0*dt*RVOR(i,j)
+            enddo
+        enddo
+        call bcvor(N,M,dx,dy,vori,psi)
+
+        call RESvor(N,M,dx,dy,Pr,Ra,dt,u,v,vori,RVOR,T)
+        do i=2,N-1
+            do j=2,M-1
+                vori(i,j) = vor(i,j)+1.0d0/2.0d0*dt*RVOR(i,j)
+            enddo
+        enddo
+        call bcvor(N,M,dx,dy,vori,psi)
+
+        call RESvor(N,M,dx,dy,Pr,Ra,dt,u,v,vori,RVOR,T)
+        do i=2,N-1
+            do j=2,M-1
+                vor(i,j) = vor(i,j)+dt*RVOR(i,j)
+            enddo
+        enddo
+        call bcvor(N,M,dx,dy,vori,psi)
+
+        return
+        end subroutine solvor
+
+        subroutine RESvor(N,M,dx,dy,Pr,Ra,dt,u,v,vor,RVOR,T)
         implicit none
         integer :: i, j, N, M
         real(8) :: dx, dy, dt, Pr, Ra, dvorx2, dvory2, dvorx1, dvory1
         real(8) :: vor(N,M), u(N,M), v(N,M), RVOR(N,M), T(N,M)
 
-        ! FTCS Sheme
         do i=2,N-1
             do j=2,M-1
                 dvorx2 = (vor(i+1,j)-2.0d0*vor(i,j)+vor(i-1,j))/dx/dx
@@ -152,13 +177,32 @@
                 dvorx1 = (u(i+1,j)*vor(i+1,j)-u(i-1,j)*vor(i-1,j))/2.0d0/dx
                 dvory1 = (v(i,j+1)*vor(i,j+1)-v(i,j-1)*vor(i,j-1))/2.0d0/dy
                 RVOR(i,j) = (dvorx2+dvory2)*Pr-Ra*Pr*(T(i+1,j)-T(i-1,j))/2.0d0/dx-dvorx1-dvory1
-                vor(i,j) = vor(i,j)+dt*RVOR(i,j)
             enddo
         enddo
 
         return
-        end subroutine solvor
+        end subroutine RESvor
 
+
+!!! updates the boundary condition for vorticity
+        subroutine bcvor(N,M,dx,dy,vor,psi)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy
+        real(8) :: vor(N,M), psi(N,M)
+
+        ! 2nd order approximation
+        do j=1,M
+            vor(1,j) = 3.0d0*psi(2,j)/dx/dx-0.5d0*vor(2,j)
+            vor(N,j) = 3.0d0*psi(N-1,j)/dx/dx-0.5d0*vor(N-1,j)
+        enddo
+        do i=1,N
+            vor(i,1) = 3.0d0*psi(i,2)/dy/dy-0.5d0*vor(i,2)
+            vor(i,M) = 3.0d0*psi(i,M-1)/dy/dy-0.5d0*vor(i,M-1)
+        enddo
+
+        return
+        end subroutine bcvor
 
 !!! solve Streamfunction equation
         subroutine solpsi(N,M,dx,dy,vor,psi,Rpsi)
@@ -199,6 +243,8 @@
             enddo
         enddo
 
+        call bcpsi(N,M,dy,psi)
+
         return
         end subroutine solpsi
 
@@ -222,27 +268,6 @@
 
         return
         end subroutine bcpsi
-
-
-!!! updates the boundary condition for vorticity
-        subroutine bcvor(N,M,dx,dy,vor,psi)
-        implicit none
-        integer :: i, j, N, M
-        real(8) :: dx, dy
-        real(8) :: vor(N,M), psi(N,M)
-
-        ! 2nd order approximation
-        do j=1,M
-            vor(1,j) = 3.0d0*psi(2,j)/dx/dx-0.5d0*vor(2,j)
-            vor(N,j) = 3.0d0*psi(N-1,j)/dx/dx-0.5d0*vor(N-1,j)
-        enddo
-        do i=1,N
-            vor(i,1) = 3.0d0*psi(i,2)/dy/dy-0.5d0*vor(i,2)
-            vor(i,M) = 3.0d0*psi(i,M-1)/dy/dy-0.5d0*vor(i,M-1)
-        enddo
-
-        return
-        end subroutine bcvor
 
 
 !!! compute velocity components u and v
@@ -278,22 +303,73 @@
 
 
 !!! compute temperature field
-        subroutine calt(N,M,dt,dx,dy,u,v,T)
+        subroutine calT(N,M,dt,dx,dy,u,v,T)
         implicit none
         integer :: i, j, N, M
         real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
-        real(8) :: T(N,M), u(N,M), v(N,M)
+        real(8) :: T(N,M), u(N,M), v(N,M), RT(N,M), Ti(N,M)
+
+        call REST(N,M,dx,dy,dt,u,v,T,RT)
+        do i=2,N-1
+            do j=2,M-1
+                Ti(i,j) = T(i,j)+0.25d0*dt*RT(i,j)
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,Ti)
+
+        call REST(N,M,dx,dy,dt,u,v,Ti,RT)
+        do i=2,N-1
+            do j=2,M-1
+                Ti(i,j) = T(i,j)+1.0d0/3.0d0*dt*RT(i,j)
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,Ti)
+
+        call REST(N,M,dx,dy,dt,u,v,Ti,RT)
+        do i=2,N-1
+            do j=2,M-1
+                Ti(i,j) = T(i,j)+1.0d0/2.0d0*dt*RT(i,j)
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,Ti)
+
+        call REST(N,M,dx,dy,dt,u,v,Ti,RT)
+        do i=2,N-1
+            do j=2,M-1
+                T(i,j) = T(i,j)+dt*RT(i,j)
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,T)
+
+        return
+        end subroutine calT
+
+        subroutine REST(N,M,dx,dy,dt,u,v,T,RT)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
+        real(8) :: T(N,M), u(N,M), v(N,M), RT(N,M)
 
        ! Interior points using FTCS Sheme
         do i=2,N-1
             do j=2,M-1
-                dTx2 = (T(i+1,j)-2*T(i,j)+T(i-1,j))/dx/dx
-                dTy2 = (T(i,j+1)-2*T(i,j)+T(i,j-1))/dy/dy
-                dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2/dx
-                dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2/dy
-                T(i,j) = T(i,j)+dt*(dTx2+dTy2-dTx1-dTy1)
+                dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
+                dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
+                dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2.0/dx
+                dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2.0/dy
+                RT(i,j) = dTx2+dTy2-dTx1-dTy1
             enddo
         enddo
+
+        return
+        end subroutine REST
+
+
+        subroutine bcT(N,M,dx,dy,dt,T)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy, dt
+        real(8) :: T(N,M)
 
        !Left and right side boundary(Dirichlet B.C.)
         do j=1,M
@@ -308,7 +384,9 @@
         enddo
 
         return
-        end subroutine calt
+        end subroutine bcT
+
+
 
 !!! check convergence
         subroutine convergence(N,M,dt,RVOR,Rpsi,error,itc)
@@ -331,81 +409,21 @@
         error = MAX(errvor,errpsi)
         if(itc.EQ.1) error = 100.0d0
 
+
+
         open(unit=01,file='error.dat',status='unknown',position='append')
 
+        write(*,*) itc,' ',error
         if (MOD(itc,2000).EQ.0) then
             write(01,*) itc,' ',error
         endif
 
         close(01)
 
+
         return
         end subroutine convergence
 
-
-!!! validate results with reference
-        subroutine validation(N,M,dx,dy,u,v,psi,T)
-        implicit none
-        integer :: N, M, i, j
-        integer :: mid_x, mid_y, temp, temp_max, temp_min
-        real(8) :: dx, dy
-        real(8) :: psi_mid, u_max, v_max, u_max_loc , v_max_loc, Nu_max, Nu_min, Nu_max_loc, Nu_min_loc
-        real(8) :: u(N,M), v(N,M), psi(N,M), T(N,M)
-        real(8) :: Nu(N)
-
-        mid_x = INT(N/2)
-        mid_y = INT(M/2)
-        psi_mid = psi(mid_x,mid_y)
-
-        u_max = 0.0d0
-        v_max = 0.0d0
-        Nu_max = 0.0d0
-        Nu_min = 100.0d0
-        temp = 0
-        temp_max = 0
-        temp_min = 0
-
-        do j=1,M
-            if(u(mid_x,j).GT.u_max) then
-                u_max = u(mid_x,j)
-                temp = j
-            endif
-        enddo
-        u_max_loc = (temp-1)*dy
-
-        do i=1,N
-            if(v(i,mid_y).GT.v_max) then
-                v_max = v(i,mid_y)
-                temp = i
-            endif
-        enddo
-        v_max_loc = (temp-1)*dx
-
-        do j=1,M
-            !!!Nu(j) = -(-11.0d0*T(1,j)+18.0d0*T(2,j)-9.0d0*T(3,j)+2.0d0*T(4,j))/6.0d0/dy
-            !!!Nu(j) = -(-3.0d0*T(1,j)+4.0d0*T(2,j)-T(3,j))/2.0d0/dy
-            Nu(j) = -(T(2,j)-T(1,j))/dx
-            if(Nu(j).GT.Nu_max) then
-                Nu_max = Nu(j)
-                temp_max = j
-            elseif(Nu(i).LT.Nu_min) then
-                Nu_min = Nu(j)
-                temp_min = j
-            endif
-        enddo
-        Nu_max_loc = (temp_max-1)*dx
-        Nu_min_loc = (temp_min-1)*dx
-
-        write(03,*)
-        write(03,*) 'psi_mid =',psi_mid
-        write(03,*) 'u_max =',u_max,'at y =',u_max_loc
-        write(03,*) 'v_max =',v_max,'at x =',v_max_loc
-        write(03,*) 'Nu_max =',Nu_max,'at y=',Nu_max_loc
-        write(03,*) 'Nu_min =',Nu_min,'at y=',Nu_min_loc
-        write(03,*)
-
-        return
-        end subroutine validation
 
 !!! output data file
         subroutine output(N,M,X,Y,u,v,psi,T,k)
@@ -431,7 +449,7 @@
         enddo
 
 100     format(2x,10(e12.6,'      '))
-101     format('Title="Buoyancy Driven Cavity Flow(Vorticity-Streamfunction Methods)"')
+101     format('Title="Buoyancy Driven Cavity Flow"')
 102     format('Variables=x,y,u,v,psi,T')
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 

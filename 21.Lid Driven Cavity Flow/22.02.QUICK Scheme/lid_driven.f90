@@ -1,6 +1,5 @@
 
-!!!    This program sloves Lid Driven Cavity Flow problem using Artificial Compressibility Methods
-!!!    Solve Momentum Equation with QUICK Scheme
+!!!    This program sloves Lid Driven Cavity Flow problem using QUICK Scheme
 !!!    This work is licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License.
 !!!    Ao Xu, Profiles: <http://www.linkedin.com/pub/ao-xu/30/a72/a29>
 
@@ -76,7 +75,7 @@
         write(*,*)
         write(*,*) '************************************************************'
         write(*,*) 'This program sloves Lid Driven Cavity Flow problem'
-        write(*,*) 'using Artificial Compressibility Methods'
+        write(*,*) 'using QUICK Scheme'
         write(*,*) 'N =',N,',       M =',M
         write(*,*) 'Re =',Re
         write(*,*) 'dt =',dt
@@ -466,7 +465,7 @@
         enddo
 
 100     format(2x,10(e12.6,'      '))
-101     format('Title="Lid Driven Cavity Flow(Artificial Compressibility Methods)"')
+101     format('Title="Lid Driven Cavity Flow"')
 102     format('Variables=x,y,u,v,psi')
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
