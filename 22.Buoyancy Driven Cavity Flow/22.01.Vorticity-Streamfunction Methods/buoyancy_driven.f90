@@ -27,7 +27,7 @@
         Ra = 1e4
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
-        dt = 5*1e-5
+        dt = 3*1e-5
         eps = 1e-8
         itc = 0
         itc_max = 1e8
@@ -101,17 +101,13 @@
             Y(j) = (j-1)*dy
         enddo
 
-        do i=1,N
-            do j=1,M
-                u(i,j) = 0.0d0
-                v(i,j) = 0.0d0!!!    u(i,j), v(i,j)------------velocity function
-                psi(i,j) = 0.0d0!!!    psi(i,j)--------------------stream function
-                Rpsi(i,j) = 0.0d0!!!    Rpsi(i,j)--------------psi^{n+1}_{i,j} - psi^{n}_{i,j}
-                vor(i,j) = 0.0d0!!!    vor(i,j)------------------vorticity function
-                RVOR(i,j) = 0.0d0!!!    RVOR(i,j)-------------(vor^{n+1}_{i,j}-vor^{n}_{i,j})/dt
-                T(i,j) = 0.0d0!!!      T(i,j))--------------Temperature field
-            enddo
-        enddo
+        u = 0.0d0
+        v = 0.0d0
+        psi = 0.0d0
+        Rpsi = 0.00d0
+        vor = 0.0d0
+        RVOR = 0.0d0
+        T = 0.0d0
 
         do j =1,M
             T(1,j) = 1.0d0  !Left side hot wall
@@ -132,7 +128,7 @@
         call RESvor(N,M,dx,dy,Pr,Ra,dt,u,v,vor,RVOR,T)
         do i=2,N-1
             do j=2,M-1
-                vori(i,j) = vor(i,j)+0.25d0*dt*RVOR(i,j)
+                vori(i,j) = vor(i,j)+dt*RVOR(i,j)
             enddo
         enddo
         call bcvor(N,M,dx,dy,vori,psi)
@@ -140,7 +136,7 @@
         call RESvor(N,M,dx,dy,Pr,Ra,dt,u,v,vori,RVOR,T)
         do i=2,N-1
             do j=2,M-1
-                vori(i,j) = vor(i,j)+1.0d0/3.0d0*dt*RVOR(i,j)
+                vori(i,j) = 0.75d0*vor(i,j)+0.25d0*(vori(i,j)+dt*RVOR(i,j))
             enddo
         enddo
         call bcvor(N,M,dx,dy,vori,psi)
@@ -148,18 +144,10 @@
         call RESvor(N,M,dx,dy,Pr,Ra,dt,u,v,vori,RVOR,T)
         do i=2,N-1
             do j=2,M-1
-                vori(i,j) = vor(i,j)+1.0d0/2.0d0*dt*RVOR(i,j)
+                vor(i,j) = 1.0d0/3.0d0*vor(i,j)+2.0d0/3.0d0*(vori(i,j)+dt*RVOR(i,j))
             enddo
         enddo
-        call bcvor(N,M,dx,dy,vori,psi)
-
-        call RESvor(N,M,dx,dy,Pr,Ra,dt,u,v,vori,RVOR,T)
-        do i=2,N-1
-            do j=2,M-1
-                vor(i,j) = vor(i,j)+dt*RVOR(i,j)
-            enddo
-        enddo
-        call bcvor(N,M,dx,dy,vori,psi)
+        call bcvor(N,M,dx,dy,vor,psi)
 
         return
         end subroutine solvor
@@ -312,7 +300,7 @@
         call REST(N,M,dx,dy,dt,u,v,T,RT)
         do i=2,N-1
             do j=2,M-1
-                Ti(i,j) = T(i,j)+0.25d0*dt*RT(i,j)
+                Ti(i,j) = T(i,j)+dt*RT(i,j)
             enddo
         enddo
         call bcT(N,M,dx,dy,dt,Ti)
@@ -320,7 +308,7 @@
         call REST(N,M,dx,dy,dt,u,v,Ti,RT)
         do i=2,N-1
             do j=2,M-1
-                Ti(i,j) = T(i,j)+1.0d0/3.0d0*dt*RT(i,j)
+                Ti(i,j) = 0.75d0*T(i,j)+0.25d0*(Ti(i,j)+dt*RT(i,j))
             enddo
         enddo
         call bcT(N,M,dx,dy,dt,Ti)
@@ -328,15 +316,7 @@
         call REST(N,M,dx,dy,dt,u,v,Ti,RT)
         do i=2,N-1
             do j=2,M-1
-                Ti(i,j) = T(i,j)+1.0d0/2.0d0*dt*RT(i,j)
-            enddo
-        enddo
-        call bcT(N,M,dx,dy,dt,Ti)
-
-        call REST(N,M,dx,dy,dt,u,v,Ti,RT)
-        do i=2,N-1
-            do j=2,M-1
-                T(i,j) = T(i,j)+dt*RT(i,j)
+                T(i,j) = 1.0d0/3.0d0*T(i,j)+2.0d0/3.0d0*(Ti(i,j)+dt*RT(i,j))
             enddo
         enddo
         call bcT(N,M,dx,dy,dt,T)

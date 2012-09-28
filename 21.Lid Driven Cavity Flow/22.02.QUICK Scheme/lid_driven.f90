@@ -27,8 +27,8 @@
 !!! input initial data
         c = 1.5d0
         c2 = c*c   ! c2 = 2.25d0
-        Re = 100.0d0
-        dt = 1e-5
+        Re = 1000.0d0
+        dt = 1e-4
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
         eps = 1e-8
@@ -54,7 +54,7 @@
             call check(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
 
 !!! output preliminary results
-            if (MOD(itc,100000).EQ.0) then
+            if (MOD(itc,10000).EQ.0) then
                 call caluvp(N,M,u,v,p,uc,vc,pc)
                 call calpsi(N,M,dx,dy,uc,vc,psi)
                 k = k+1
@@ -374,13 +374,13 @@
 
         error = MAX(erru,(MAX(errv,errp)))
 
-        open(unit=01,file='error.dat',status='unknown',position='append')
+        write(*,*) itc,' ',error
 
-        if (MOD(itc,2000).EQ.0) then
-            write(01,*) itc,' ',error
-        endif
-
-        close(01)
+!!!        open(unit=01,file='error.dat',status='unknown',position='append')
+!!!        if (MOD(itc,2000).EQ.0) then
+!!!            write(01,*) itc,' ',error
+!!!        endif
+!!!        close(01)
 
         return
         end subroutine check
