@@ -1,5 +1,6 @@
 
-!!!    This program sloves Lid Driven Cavity Flow problem using Vorticity-Streamfunction Methods
+!!!    This program sloves Lid Driven Cavity Flow problem using Vorticity-Streamfunction Method
+!!!    Copyright (C) 2012  Ao Xu
 !!!    This work is licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License.
 !!!    Ao Xu, Profiles: <http://www.linkedin.com/pub/ao-xu/30/a72/a29>
 
@@ -15,15 +16,10 @@
 !!!               |---------------|
 !!!                Stationary Wall
 
-!!!    u(i,j), v(i,j)-------------velocity function
-!!!    psi(i,j)-------------------stream function
-!!!    vor(i,j)-------------------vorticity function
-!!!    Rpsi(i,j)------------------psi^{n+1}_{i,j} - psi^{n}_{i,j}
-!!!    RVOR(i,j)------------------(vor^{n+1}_{i,j}-vor^{n}_{i,j})/dt
 
         program main
         implicit none
-        integer, parameter :: N=101, M=101
+        integer, parameter :: N=81, M=81
         integer :: i, j, itc, itc_max, k
         real(8) :: dx, dy, Re, dt, eps, error
         real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M)
@@ -32,14 +28,13 @@
         Re = 1000.0d0
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
-        dt = 0.0005d0
+        dt = 1e-4
         eps = 1e-4
         itc = 0
         itc_max = 1e6
         error = 100.0d0
         k = 0
 
-        write(*,*) 'Start:'
 !!! set up initial flow field
         call initial(N,M,dx,dy,X,Y,u,v,psi,vor,RVOR,Rpsi)
 
@@ -280,9 +275,13 @@
         error = MAX(errvor,errpsi)
         if(itc.EQ.1) error = 100.0d0
 
-        if (MOD(itc,500).EQ.0) then
-            write(*,*) 'itc=',itc,'    |    error=',error
-        endif
+        write(*,*) itc,' ',error
+
+!!!        open(unit=01,file='error.dat',status='unknown',position='append')
+!!!        if (MOD(itc,2000).EQ.0) then
+!!!            write(01,*) itc,' ',error
+!!!        endif
+!!!        close(01)
 
         return
         end subroutine convergence
