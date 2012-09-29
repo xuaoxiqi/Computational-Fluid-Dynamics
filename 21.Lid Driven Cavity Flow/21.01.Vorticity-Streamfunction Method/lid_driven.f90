@@ -61,13 +61,13 @@
 !!! output preliminary results
             if (MOD(itc,10000).EQ.0) then
                 k = k+1
-                call output(N,M,X,Y,u,v,psi,VOR,k)
+                call output(N,M,X,Y,u,v,psi,k)
             endif
 
         enddo
 
 !!! output data file
-        call output(N,M,X,Y,u,v,psi,VOR,k)
+        call output(N,M,X,Y,u,v,psi,k)
 
         write(*,*)
         write(*,*) '************************************************************'
@@ -289,10 +289,10 @@
 
 
 !!! output data file
-        subroutine output(N,M,X,Y,u,v,psi,VOR,k)
+        subroutine output(N,M,X,Y,uc,vc,psi,k)
         implicit none
         integer :: N, M, i, j, k
-        real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), psi(N,M)
+        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), psi(N,M)
 
         character*16 filename
 
@@ -308,17 +308,16 @@
         write(02,103) N, M
         do j=1,M
             do i = 1,N
-                write(02,100) X(i), Y(j), u(i,j), v(i,j), psi(i,j), VOR(i,j)
+                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), psi(i,j)
             enddo
         enddo
 
 100     format(2x,10(e12.6,'      '))
-101     format('Title="Lid Driven Cavity Flow(Vorticity-Streamfunction Methods)"')
-102     format('Variables=x,y,u,v,psi,VOR')
+101     format('Title="Lid Driven Cavity Flow"')
+102     format('Variables=x,y,u,v,psi')
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
         close(02)
-        write(*,*) 'Data export to',filename,'file!'
 
         return
         end subroutine output
