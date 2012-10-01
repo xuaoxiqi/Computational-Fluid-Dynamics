@@ -31,7 +31,7 @@
         dt = 1e-4
         eps = 1e-4
         itc = 0
-        itc_max = 1e6
+        itc_max = 5*1e5
         error = 100.0d0
         k = 0
 
@@ -100,16 +100,15 @@
             Y(j) = (j-1)*dy
         enddo
 
+        u = 0.0d0
+        v = 0.0d0
+        psi = 0.0d0
+        vor = 0.0d0
+        RVOR = 0.0d0
+        Rpsi = 0.0d0
+
         do i=1,N
-            do j=1,M
-                u(i,j) = 0.0d0
-                if(j.EQ.M) u(i,j) = 1.0d0  !!! Upper boundary condition
-                v(i,j) = 0.0d0!!!    u(i,j), v(i,j)------------velocity function
-                psi(i,j) = 0.0d0!!!    psi(i,j)--------------------Streamfunction
-                vor(i,j) = 0.0d0!!!    vor(i,j)------------------vorticity function
-                RVOR(i,j) = 0.0d0!!!    RVOR(i,j)-------------(vor^{n+1}_{i,j}-vor^{n}_{i,j})/dt
-                Rpsi(i,j) = 0.0d0!!!    Rpsi(i,j)--------------psi^{n+1}_{i,j} - psi^{n}_{i,j}
-            enddo
+            u(i,M) = 1.0d0
         enddo
 
         return

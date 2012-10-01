@@ -350,8 +350,8 @@
 
         !Top and bottom side boundary(Neumann B.C.)
         do i=2,N
-            Tn(i,1) = Tn(i,2)
-            Tn(i,M+1) = Tn(i,M)
+            Tn(i,1) = -Tn(i,2)
+            Tn(i,M+1) = -Tn(i,M)
         enddo
         !Left and right side boundary(Dirichlet B.C.)
         do j=1,M+1

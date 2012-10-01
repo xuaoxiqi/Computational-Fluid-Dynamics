@@ -34,7 +34,7 @@
         dy = 1.0d0/float(M-1)
         eps = 1e-8
         itc = 0
-        itc_max = 1e7
+        itc_max = 5*1e5
         error=100.00d0
         k = 0
 
@@ -96,7 +96,7 @@
         implicit none
         integer :: N, M, i, j
         real(8) :: dx, dy
-        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), psi(N,M), uc(N,M), vc(N,M), X(N), Y(M)
+        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), psi(N,M), X(N), Y(M)
 
         do i=1,N
             X(i) = (i-1)*dx

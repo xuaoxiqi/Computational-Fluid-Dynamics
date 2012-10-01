@@ -60,7 +60,7 @@
             call convergence(N,M,dt,c2,error,u,v,p,T,un,vn,pn,Tn,itc)
 
 !!! output preliminary results
-            if (MOD(itc,10).EQ.0) then
+            if (MOD(itc,1000).EQ.0) then
                 call caluvpt(N,M,u,v,p,T,uc,vc,pc,Tc)
                 call calpsi(N,M,dx,dy,uc,vc,psi)
                 k = k+1
@@ -114,18 +114,17 @@
         do j=1,M
             Y(j) = (j-1)*dy
         enddo
-        do i=1,N+1
-            do j=1,M+1
-                T(i,j) = 0.0d0
-                if(i.EQ.1) T(i,j) = 4.0d0/3.0d0
-                if(i.EQ.2) T(i,j) = 2.0d0/3.0d0
-            enddo
-        enddo
 
-        p = 1.0d0
         u = 0.0d0
         v = 0.0d0
+        p = 1.0d0
+        T = 0.0d0
         psi = 0.0d0
+
+        do j=1,M+1
+            T(1,j) = 4.0d0/3.0d0
+            T(2,j) = 2.0d0/3.0d0
+        enddo
 
         return
         end subroutine initial
@@ -378,8 +377,8 @@
 
         !Top and bottom side boundary(Neumann B.C.)
         do i=2,N
-            Tn(i,1) = Tn(i,2)
-            Tn(i,M+1) = Tn(i,M)
+            Tn(i,1) = -Tn(i,2)
+            Tn(i,M+1) = -Tn(i,M)
         enddo
         !Left and right side boundary(Dirichlet B.C.)
         do j=1,M+1
@@ -455,20 +454,14 @@
             enddo
         enddo
 
-       do i=1,N+1
-            do j=1,M+1
-                T(i,j) = Tn(i,j)
-            enddo
-        enddo
+        T = Tn
 
         error = MAX(erru,(MAX(errv,errp)))
 
         open(unit=01,file='error.dat',status='unknown',position='append')
 
         write(*,*) itc,' ',error
-        if (MOD(itc,2000).EQ.0) then
-            write(01,*) itc,' ',error
-        endif
+        !!!write(01,*) itc,' ',error
 
         close(01)
 
