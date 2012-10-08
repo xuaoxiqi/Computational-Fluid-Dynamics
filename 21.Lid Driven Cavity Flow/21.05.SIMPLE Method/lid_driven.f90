@@ -1,5 +1,5 @@
 
-!!!    This program sloves Lid Driven Cavity Flow problem using Marker in Cell Scheme
+!!!    This program sloves Lid Driven Cavity Flow problem using SIMPLE Method
 !!!    Copyright (C) 2012  Ao Xu
 !!!    This work is licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License.
 !!!    Ao Xu, Profiles: <http://www.linkedin.com/pub/ao-xu/30/a72/a29>
@@ -23,6 +23,8 @@
         integer :: itc, itc_max, k
         real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),psi(N,M),X(N), Y(M)
         real(8) :: un(N,M+1),vn(N+1,M),pn(N+1,M+1),uc(N,M),vc(N,M),pc(N,M)
+        real(8) :: dp(N+1,M+1), pr(N+1,M+1), ur(N,M+1), vr(N+1,M)
+        real(8) :: D(N+1,M+1)
         real(8) :: Re, dt, dx, dy, eps, error
 
 !!! input initial data
@@ -30,28 +32,28 @@
         dt = 1e-4
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
-        eps = 1e-8
+        eps = 1e-4
         itc = 0
         itc_max = 5*1e5
         error=100.00d0
         k = 0
 
 !!! set up initial flow field
-        call initial(N,M,dx,dy,X,Y,u,v,p,psi)
+        call initial(N,M,dx,dy,X,Y,u,v,p,dp,psi)
 
-        do while((error.GT.eps).AND.(itc.LT.itc_max))
+        do while(itc.LT.itc_max)
 
             error=0.0d0
 
 !!! Solve Pressure Equation
-            call calpn(N,M,dx,dy,dt,Re,p,u,v,pn)
+            call solmom(N,M,dx,dy,dt,Re,u,v,pr,ur,vr)
 
-!!! Solve Momentum Equation
-            call solmom(N,M,dx,dy,dt,Re,u,v,pn,un,vn)
+            call caldp(N,M,dx,dy,dt,Re,ur,vr,dp)
+
+            call update_uvp(N,M,dx,dy,dt,ur,vr,pr,dp,un,vn,pn)
 
 !!! check convergence
-            call check(N,M,dx,dy,dt,error,u,v,p,un,vn,pn,itc)
-
+            call check(N,M,dx,dy,dt,error,ur,vr,un,vn,pn,u,v,pr,itc)
 !!! output preliminary results
             if (MOD(itc,10000).EQ.0) then
 
@@ -76,7 +78,7 @@
         write(*,*)
         write(*,*) '************************************************************'
         write(*,*) 'This program sloves Lid Driven Cavity Flow problem'
-        write(*,*) 'using Marker in Cell Scheme'
+        write(*,*) 'using SIMPLE Method'
         write(*,*) 'N =',N,',       M =',M
         write(*,*) 'Re =',Re
         write(*,*) 'dt =',dt
@@ -91,11 +93,11 @@
 
 
 !!! set up initial flow field
-        subroutine initial(N,M,dx,dy,X,Y,u,v,p,psi)
+        subroutine initial(N,M,dx,dy,X,Y,u,v,pr,dp,psi)
         implicit none
         integer :: N, M, i, j
         real(8) :: dx, dy
-        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), psi(N,M), uc(N,M), vc(N,M), X(N), Y(M)
+        real(8) :: u(N,M+1), v(N+1,M), pr(N+1,M+1),dp(N+1,M+1), psi(N,M), uc(N,M), vc(N,M), X(N), Y(M)
 
         do i=1,N
             X(i) = (i-1)*dx
@@ -104,10 +106,11 @@
             Y(j) = (j-1)*dy
         enddo
 
-        p = 1.0d0
+        pr = 1.0d0
         u = 0.0d0
         v = 0.0d0
         psi = 0.0d0
+        dp = 0.0d0
 
         do i=1,N
             u(i,M+1) = 4.0d0/3.0d0
@@ -117,71 +120,89 @@
         return
         end subroutine initial
 
+
+!!! Solve Momentum Equation
+        subroutine solmom(N,M,dx,dy,dt,Re,u,v,pr,ur,vr)
+        implicit none
+        integer :: N, M, i, j
+        real(8) :: u(N,M+1),v(N+1,M),pr(N+1,M+1),ur(N,M+1),vr(N+1,M)
+        real(8) :: Re, dx, dy, dt
+
+        do i=2,N-1
+            do j=2,M
+    ur(i,j) = u(i,j) - dt*(  (u(i+1,j)*u(i+1,j)-u(i-1,j)*u(i-1,j))/2.0d0/dx &
+    +0.25d0*( (u(i,j)+u(i,j+1))*(v(i,j)+v(i-1,j))-(u(i,j)+u(i,j-1))*(v(i-1,j-1)+v(i,j-1)) )/dy  )&
+    - dt/dx*(pr(i+1,j)-pr(i,j)) &
+    + dt*1.0d0/Re*( (u(i+1,j)-2.0d0*u(i,j)+u(i-1,j))/dx/dx +(u(i,j+1)-2.0d0*u(i,j)+u(i,j-1))/dy/dy )
+            enddo
+        enddo
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        do i=2,N
+            do j=2,M-1
+    vr(i,j) = v(i,j) - dt* ( 0.25d0*( (u(i,j)+u(i,j+1))*(v(i,j)+v(i+1,j))-(u(i-1,j)+u(i-1,j+1))*(v(i,j)+v(i-1,j)) )/dx &
+    +(v(i,j+1)*v(i,j+1)-v(i,j-1)*v(i,j-1))/2.0d0/dy ) &
+    - dt/dy*(pr(i,j+1)-pr(i,j)) &
+    + dt*1.0d0/Re*( (v(i+1,j)-2.0d0*v(i,j)+v(i-1,j))/dx/dx+(v(i,j+1)-2.0d0*v(i,j)+v(i,j-1))/dy/dy )
+            enddo
+        enddo
+
+        return
+        end subroutine solmom
+
+
 !!! Solve Pressure Equation
-        subroutine calpn(N,M,dx,dy,dt,Re,p,u,v,pn)
+        subroutine caldp(N,M,dx,dy,dt,Re,ur,vr,dp)
         implicit none
         integer :: N, M, i, j
         real(8) :: Re
         real(8) :: dx, dy, dt
         real(8) :: alpha
-        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), pn(N+1,M+1), D(N+1,M+1)
+        real(8) :: ur(N,M+1), vr(N+1,M), dp(N+1,M+1)
         real(8) :: R(N,M)
 
-        D = 0.0d0
+        dp = 0.0d0
         do i=2,N
             do j=2,M
-                D(i,j) = (u(i,j)-u(i-1,j))/dx+(v(i,j)-v(i,j-1))/dy
+                dp(i,j) = ( dt/dx/dx*(dp(i+1,j)+dp(i-1,j))+dt/dy/dy*(dp(i,j+1)+dp(i,j-1)) &
+                            -(ur(i,j)-ur(i-1,j))/dx-(vr(i,j)-vr(i,j-1))/dy )/2.0d0/(dt/dx/dx+dt/dy/dy)
             enddo
-        enddo
-
-        do i=2,N
-            do j=2,M
-        R(i,j) = -(0.0d0-D(i,j))/dt -  (u(i,j)*u(i,j)-(u(i,j)+u(i-1,j))*(u(i,j)+u(i-1,j))/2.0d0+u(i-1,j)*u(i-1,j)) /dx/dx &
-                - 2.0*(  0.25d0*( (u(i,j)+u(i,j+1))*(v(i,j)+v(i-1,j))+(u(i-1,j)+u(i-1,j-1))*(v(i-1,j-1)+v(i,j-1)) &
-                                 -(u(i,j)+u(i,j-1))*(v(i,j-1)+v(i+1,j-1))+(u(i-1,j)+u(i-1,j+1))*(v(i-1,j)+v(i,j))  )  )/dx/dy &
-                - (v(i,j)*v(i,j)-(v(i,j)+v(i,j-1))*(v(i,j)+v(i,j-1))/2.0d0+v(i,j-1)*v(i,j-1)) &
-                + 1.0d0/Re*( (D(i+1,j)-2.0d0*D(i,j)+D(i-1,j))/dx/dx+(D(i,j+1)-2.0d0*D(i,j)+D(i,j-1))/dy/dy )
-            enddo
-        enddo
-
-        alpha =0.6d0    !!! alpha is relaxation factor
-
-        do i=2,N
-            do j=2,M
-                pn(i,j) = (1-alpha)*p(i,j)+alpha/2.0d0/(1.0d0/dx/dx+1.0d0/dy/dy)  &
-                        *(1.0d0/dx/dx*(p(i+1,j)+p(i-1,j))+1.0d0/dy/dy*(p(i,j+1)+p(i,j-1))-R(i,j))
-            enddo
-        enddo
-
-        !!! boundary condition
-        do i=2,N
-            pn(i,1) = pn(i,2)
-            pn(i,M+1) = pn(i,M)
-        enddo
-        do j=1,M+1
-            pn(1,j) = pn(2,j)
-            pn(N+1,j) = pn(N,j)
         enddo
 
         return
-        end subroutine calpn
+        end subroutine caldp
 
-
-!!! Solve Momentum Equation
-        subroutine solmom(N,M,dx,dy,dt,Re,u,v,pn,un,vn)
+        subroutine update_uvp(N,M,dx,dy,dt,ur,vr,pr,dp,un,vn,pn)
         implicit none
         integer :: N, M, i, j
-        real(8) :: u(N,M+1),v(N+1,M),pn(N+1,M+1),un(N,M+1),vn(N+1,M)
-        real(8) :: Re, dx, dy, dt
+        real(8) :: dx, dy, dt
+        real(8) :: du(N,M+1), dv(N+1,M), dp(N+1,M+1)
+        real(8) :: ur(N,M+1), vr(N+1,M), pr(N+1,M+1)
+        real(8) :: un(N,M+1), vn(N+1,M), pn(N+1,M+1)
+        real(8) :: alpha
 
         do i=2,N-1
             do j=2,M
-    un(i,j) = u(i,j) - dt*(  (u(i+1,j)*u(i+1,j)-u(i-1,j)*u(i-1,j))/2.0d0/dx &
-    +0.25d0*( (u(i,j)+u(i,j+1))*(v(i,j)+v(i-1,j))-(u(i,j)+u(i,j-1))*(v(i-1,j-1)+v(i,j-1)) )/dy  )&
-    - dt/dx*(pn(i+1,j)-pn(i,j)) &
-    + dt*1.0d0/Re*( (u(i+1,j)-2.0d0*u(i,j)+u(i-1,j))/dx/dx +(u(i,j+1)-2.0d0*u(i,j)+u(i,j-1))/dy/dy )
+                du(i,j) = -dt/dx*(dp(i+1,j)-dp(i,j))
+                un(i,j) = ur(i,j)+du(i,j)
             enddo
         enddo
+
+        do i=2,N
+            do j=2,M-1
+                dv(i,j) = -dt/dy*(dp(i,j+1)-dp(i,j))
+                vn(i,j) = vr(i,j)+dv(i,j)
+            enddo
+        enddo
+
+        alpha = 0.8d0
+        do i=2,N
+            do j=2,M
+                pn(i,j) = pr(i,j)+alpha*dp(i,j)
+            enddo
+        enddo
+
+        !!! boundary condition for velocity
 
         do j=2,M
             un(1,j) = 0.0d0
@@ -191,15 +212,6 @@
         do i=1,N
             un(i,1) = -un(i,2)
             un(i,M+1) = 2.0d0-un(i,M)
-        enddo
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        do i=2,N
-            do j=2,M-1
-    vn(i,j) = v(i,j) - dt* ( 0.25d0*( (u(i,j)+u(i,j+1))*(v(i,j)+v(i+1,j))-(u(i-1,j)+u(i-1,j+1))*(v(i,j)+v(i-1,j)) )/dx &
-    +(v(i,j+1)*v(i,j+1)-v(i,j-1)*v(i,j-1))/2.0d0/dy ) &
-    - dt/dy*(pn(i,j+1)-pn(i,j)) &
-    + dt*1.0d0/Re*( (v(i+1,j)-2.0d0*v(i,j)+v(i-1,j))/dx/dx+(v(i,j+1)-2.0d0*v(i,j)+v(i,j-1))/dy/dy )
-            enddo
         enddo
 
         do j=2,M-1
@@ -212,34 +224,43 @@
             vn(i,M) = 0.0d0
         enddo
 
+        !!! boundary condition for pressure
+        do i=2,N
+            pn(i,1) = pn(i,2)
+            pn(i,M+1) = pn(i,M)
+        enddo
+        do j=1,M+1
+            pn(1,j) = pn(2,j)
+            pn(N+1,j) = pn(N,j)
+        enddo
+
         return
-        end subroutine solmom
+        end subroutine update_uvp
 
 
 !!! check convergence
-        subroutine check(N,M,dx,dy,dt,error,u,v,p,un,vn,pn,itc)
+        subroutine check(N,M,dx,dy,dt,error,ur,vr,un,vn,pn,u,v,pr,itc)
         implicit none
         integer :: N, M, i, j, itc
-        real(8) :: dt, error, temp
+        real(8) :: dt, error
         real(8) :: dx, dy
-        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), un(N,M+1), vn(N+1,M), pn(N+1,M+1), Dn(N,M)
-        real(8) :: erru, errv, errp
+        real(8) :: ur(N,M+1), vr(N+1,M)
+        real(8) :: u(N,M+1), v(N+1,M), pr(N+1,M+1), un(N,M+1), vn(N+1,M), pn(N+1,M+1)
+        real(8) :: D(N,M)
 
         itc = itc+1
         error = 0.0d0
-        Dn = 0.0d0
 
         do i=2,N
             do j=2,M
-                Dn(i,j) = (un(i,j)-un(i-1,j))/dx+(vn(i,j)-vn(i,j-1))/dy
-                if(Dn(i,j).GT.error) error = Dn(i,j)
+                D(i,j) = (ur(i,j)-ur(i-1,j))/dx+(vr(i,j)-vr(i,j-1))/dy
+                if(D(i,j).GT.error) error = D(i,j)
             enddo
         enddo
 
         u = un
         v = vn
-        p = pn
-
+        pr = pn
 
         write(*,*) itc,' ',error
 
@@ -340,6 +361,3 @@
 
         return
         end subroutine output
-
-
-
