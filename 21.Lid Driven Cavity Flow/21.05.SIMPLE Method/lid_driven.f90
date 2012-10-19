@@ -32,7 +32,7 @@
         dt = 1e-4
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
-        eps = 1e-4
+        eps = 1e-6
         itc = 0
         itc_max = 5*1e5
         error=100.00d0
@@ -41,19 +41,22 @@
 !!! set up initial flow field
         call initial(N,M,dx,dy,X,Y,u,v,p,dp,psi)
 
-        do while(itc.LT.itc_max)
+        do while((error.GT.eps).AND.(itc.LT.itc_max))
 
             error=0.0d0
 
-!!! Solve Pressure Equation
+!!! Use guessed pressure values to solve for velocity from momentum equations
             call solmom(N,M,dx,dy,dt,Re,u,v,pr,ur,vr)
 
+!!! Use continuity equation to construct a pressure correction dp
             call caldp(N,M,dx,dy,dt,Re,ur,vr,dp)
 
+!!! Update velocity using velocity correction du, dv
             call update_uvp(N,M,dx,dy,dt,ur,vr,pr,dp,un,vn,pn)
 
 !!! check convergence
             call check(N,M,dx,dy,dt,error,ur,vr,un,vn,pn,u,v,pr,itc)
+
 !!! output preliminary results
             if (MOD(itc,10000).EQ.0) then
 
@@ -121,7 +124,7 @@
         end subroutine initial
 
 
-!!! Solve Momentum Equation
+!!! Use guessed pressure values to solve for velocity from momentum equations
         subroutine solmom(N,M,dx,dy,dt,Re,u,v,pr,ur,vr)
         implicit none
         integer :: N, M, i, j
@@ -151,7 +154,7 @@
         end subroutine solmom
 
 
-!!! Solve Pressure Equation
+!!! Use continuity equation to construct a pressure correction dp
         subroutine caldp(N,M,dx,dy,dt,Re,ur,vr,dp)
         implicit none
         integer :: N, M, i, j
@@ -172,6 +175,8 @@
         return
         end subroutine caldp
 
+
+!!! Update velocity using velocity correction du, dv
         subroutine update_uvp(N,M,dx,dy,dt,ur,vr,pr,dp,un,vn,pn)
         implicit none
         integer :: N, M, i, j
