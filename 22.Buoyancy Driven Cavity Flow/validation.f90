@@ -13,7 +13,7 @@
         real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M), T(N,M)
         real(8) :: Nu(N)
 
-        open(unit=01,file='./0004cavity.dat',status='old')
+        open(unit=01,file='./1104cavity.dat',status='old')
         read(01,*)
         read(01,*)
         read(01,*)

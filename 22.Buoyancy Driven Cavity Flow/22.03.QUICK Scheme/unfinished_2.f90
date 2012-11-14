@@ -21,16 +21,16 @@
         integer, parameter :: N=81,M=81
         integer :: itc, itc_max, k
         real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),T(N+1,M+1),psi(N,M),X(N), Y(M)
-        real(8) :: un(N,M+1),vn(N+1,M),pn(N+1,M+1),Tn(N+1,M+1)
+        real(8) :: un(N,M+1),vn(N+1,M),pn(N+1,M+1)
         real(8) :: uc(N,M),vc(N,M),pc(N,M),Tc(N,M)
         real(8) :: c, c2, Pr, Ra, dt, dx, dy, eps, error
 
 !!! input initial data
         c = 1.5d0
         c2 = c*c   ! c2 = 2.25d0
-        Pr = 0.01d0
-        Ra = 1e4
-        dt = 1e-4
+        Pr = 0.71d0
+        Ra = 1e3
+        dt = 2*1e-5
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
         !!! eps = 1e-8
@@ -53,10 +53,10 @@
             call calpn(N,M,dx,dy,dt,c2,p,un,vn,pn)
 
 !!! Solve Energy Equation
-            call caltn(N,M,dx,dy,dt,T,Tn,un,vn)
+            call calT(N,M,dt,dx,dy,un,vn,T)
 
 !!! check convergence
-            call convergence(N,M,dt,c2,error,u,v,p,T,un,vn,pn,Tn,itc)
+            call convergence(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
 
 !!! output preliminary results
             if (MOD(itc,2).EQ.0) then
@@ -82,7 +82,7 @@
         write(03,*)
         write(03,*) '************************************************************'
         write(03,*) 'This program sloves Buoyancy Driven Cavity Flow problem'
-        write(03,*) 'using Artificial Compressibility Methods'
+        write(03,*) 'using QUICK Scheme'
         write(03,*) 'N =',N,',       M =',M
         write(03,*) 'Pr =',Pr
         write(03,*) 'Ra =',Ra
@@ -104,7 +104,7 @@
         implicit none
         integer :: N, M, i, j
         real(8) :: dx, dy
-        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1),T(N+1,M+1),psi(N,M), X(N), Y(M)
+        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), T(N+1,M+1), psi(N,M), X(N), Y(M)
 
         do i=1,N
             X(i) = (i-1)*dx
@@ -112,18 +112,17 @@
         do j=1,M
             Y(j) = (j-1)*dy
         enddo
-        do i=1,N+1
-            do j=1,M+1
-                T(i,j) = 0.0d0
-                if(i.EQ.1) T(i,j) = 4.0d0/3.0d0
-                if(i.EQ.2) T(i,j) = 2.0d0/3.0d0
-            enddo
-        enddo
 
         p = 1.0d0
         u = 0.0d0
         v = 0.0d0
         psi = 0.0d0
+        T = 0.0d0
+
+        do j=1,N+1
+            T(1,j) = 4.0d0/3.0d0
+            T(2,j) = 2.0d0/3.0d0
+        enddo
 
         return
         end subroutine initial
@@ -179,7 +178,7 @@
 
         !!! compute exterior region boundary with physical boundary condition
         do i=2,N-1
-            un(i,1) = 2.0d0-un(i,2)
+            un(i,1) = -un(i,2)
             un(i,M+1) = -un(i,M)
         enddo
         do j=1,M+1
@@ -329,46 +328,90 @@
         end subroutine calpn
 
 
-        subroutine caltn(N,M,dx,dy,dt,T,Tn,u,v)
+!!! compute temperature field
+        subroutine calT(N,M,dt,dx,dy,un,vn,T)
         implicit none
         integer :: i, j, N, M
-        real(8) :: dx, dy, dt
-        real(8) :: dTx1, dTy1, dTx2, dTy2
-        real(8) :: alpha
-        real(8) :: T(N+1,M+1), Tn(N+1,M+1), u(N,M+1), v(N+1,M)
+        real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
+        real(8) :: T(N+1,M+1), un(N,M+1), vn(N+1,M), RT(N+1,M+1), Ti(N+1,M+1)
 
-!!!       ! Interior points using FTCS Sheme(Conservation form)
+        call REST(N,M,dx,dy,dt,un,vn,T,RT)
+        do i=2,N
+            do j=2,M
+                Ti(i,j) = T(i,j)+dt*RT(i,j)
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,Ti)
+
+        call REST(N,M,dx,dy,dt,un,vn,Ti,RT)
+        do i=2,N
+            do j=2,M
+                Ti(i,j) = 0.75d0*T(i,j)+0.25d0*(Ti(i,j)+dt*RT(i,j))
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,Ti)
+
+        call REST(N,M,dx,dy,dt,un,vn,Ti,RT)
+        do i=2,N
+            do j=2,M
+                T(i,j) = 1.0d0/3.0d0*T(i,j)+2.0d0/3.0d0*(Ti(i,j)+dt*RT(i,j))
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,T)
+
+        return
+        end subroutine calT
+
+        subroutine REST(N,M,dx,dy,dt,un,vn,T,RT)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
+        real(8) :: T(N+1,M+1), un(N,M+1), vn(N+1,M), RT(N+1,M+1)
+
+       ! Interior points using FTCS Sheme
         do i=2,N
             do j=2,M
                 dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
                 dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
-                dTx1 = (T(i+1,j)-T(i-1,j))/2.0d0/dx*(u(i,j)+u(i-1,j))/2.0d0
-                dTy1 = (T(i,j+1)-T(i,j-1))/2.0d0/dx*(v(i,j)+v(i,j-1))/2.0d0
-                Tn(i,j) = T(i,j)+dt*(dTx2+dTy2-dTx1-dTy1)
+!        dTx1 = (un(i,j)*(0.25d0*T(i,j+1)+0.25d0*T(i+1,j+1)+1.5d0*T(i,j)+1.5d0*T(i+1,j)+0.25d0*T(i,j-1)+0.25d0*T(i+1,j-1))*0.25d0 &
+!        -un(i-1,j)*(0.25d0*T(i-1,j+1)+0.25d0*T(i,j+1)+1.5d0*T(i-1,j)+1.5d0*T(i,j)+0.25d0*T(i-1,j-1)+0.25d0*T(i,j-1))*0.25d0)/dx
+!        dTy1 = (vn(i,j)*(0.25d0*T(i-1,j+1)+0.25d0*T(i-1,j)+1.5d0*T(i,j+1)+1.5d0*T(i,j)+0.25d0*T(i+1,j+1)+0.25d0*T(i+1,j))*0.25d0 &
+!        -vn(i,j-1)*(0.25d0*T(i-1,j)+0.25d0*T(i-1,j-1)+1.5d0*T(i,j)+1.5d0*T(i,j-1)+0.25d0*T(i+1,j)+0.25d0*T(i+1,j-1))*0.25d0)/dy
+                dTx1 = (un(i,j)*(T(i,j)+T(i+1,j))/2.0d0-un(i-1,j)*(T(i,j)+T(i-1,j))/2.0d0)/dx
+                dTy1 = (vn(i,j)*(T(i,j)+T(i,j+1))/2.0d0-vn(i,j-1)*(T(i,j)+T(i,j-1))/2.0d0)/dy
+                RT(i,j) = dTx2+dTy2-dTx1-dTy1
             enddo
         enddo
 
-        !Top and bottom side boundary(Neumann B.C.)
+        return
+        end subroutine REST
+
+
+        subroutine bcT(N,M,dx,dy,dt,T)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy, dt
+        real(8) :: T(N+1,M+1)
+
         do i=2,N
-            Tn(i,1) = -Tn(i,2)
-            Tn(i,M+1) = -Tn(i,M)
+            T(i,1) = T(i,2)
+            T(i,M+1) = T(i,M)
         enddo
-        !Left and right side boundary(Dirichlet B.C.)
+
         do j=1,M+1
-            Tn(1,j) = 2.0d0-Tn(2,j)
-            Tn(N+1,j) = -Tn(N,j)
+            T(1,j) = 2.0d0-T(2,j)
+            T(N+1,j) = -T(N,j)
         enddo
 
         return
-        end subroutine caltn
-
+        end subroutine bcT
 
 !!! check convergence
-        subroutine convergence(N,M,dt,c2,error,u,v,p,T,un,vn,pn,Tn,itc)
+        subroutine convergence(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
         implicit none
         integer :: N, M, i, j, itc
         real(8) :: dt, c2, error, temp
-        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), T(N+1,M+1), un(N,M+1), vn(N+1,M), pn(N+1,M+1), Tn(N+1,M+1)
+        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), un(N,M+1), vn(N+1,M), pn(N+1,M+1)
         real(8) :: erru, errv, errp
 
         itc = itc+1
@@ -400,22 +443,16 @@
             enddo
         enddo
 
-       do i=1,N+1
-            do j=1,M+1
-                T(i,j) = Tn(i,j)
-            enddo
-        enddo
 
         error = MAX(erru,(MAX(errv,errp)))
 
-        open(unit=01,file='error.dat',status='unknown',position='append')
-
         write(*,*) itc,' ',error
-        if (MOD(itc,2000).EQ.0) then
-            write(01,*) itc,' ',error
-        endif
 
-        close(01)
+!        open(unit=01,file='error.dat',status='unknown',position='append')
+!        if (MOD(itc,100).EQ.0) then
+!            write(01,*) itc,' ',error
+!        endif
+!        close(01)
 
         return
         end subroutine convergence

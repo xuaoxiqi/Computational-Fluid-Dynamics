@@ -1,6 +1,6 @@
 
 !!!    This program sloves Lid Driven Cavity Flow problem using Artificial Compressibility Method
-!!!    Consider N-S Equation in non-conservative form
+!!!    Consider N-S Equation in conservative form
 !!!    Copyright (C) 2012  Ao Xu
 !!!    This work is licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License.
 !!!    Ao Xu, Profiles: <http://www.linkedin.com/pub/ao-xu/30/a72/a29>
@@ -81,7 +81,7 @@
         write(*,*) '************************************************************'
         write(*,*) 'This program sloves Lid Driven Cavity Flow problem'
         write(*,*) 'using Artificial Compressibility Method'
-        write(*,*) 'Consider N-S Equation in non-conservative form'
+        write(*,*) 'Consider N-S Equation in conservative form'
         write(*,*) 'N =',N,',       M =',M
         write(*,*) 'Re =',Re
         write(*,*) 'dt =',dt
@@ -131,13 +131,12 @@
         real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),un(N,M+1),vn(N+1,M)
         real(8) :: Re, dx, dy, dt
 
-
         do i=2,N-1
             do j=2,M
-                un(i,j) = u(i,j) - dt*( u(i,j)*(u(i+1,j)-u(i-1,j))/2.0d0/dx &
-                                          + 0.25d0*(v(i,j)+v(i+1,j)+v(i,j-1)+v(i+1,j-1))*(u(i,j+1)-u(i,j-1))/2.0d0/dy ) &
-                - dt/dx*(p(i+1,j)-p(i,j)) &
-                + dt*1.0d0/Re*( (u(i+1,j)-2.0d0*u(i,j)+u(i-1,j))/dx/dx +(u(i,j+1)-2.0d0*u(i,j)+u(i,j-1))/dy/dy )
+    un(i,j) = u(i,j) - dt*(  (u(i+1,j)*u(i+1,j)-u(i-1,j)*u(i-1,j))/2.0d0/dx &
+    +0.25d0*( (u(i,j)+u(i,j+1))*(v(i,j)+v(i-1,j))-(u(i,j)+u(i,j-1))*(v(i-1,j-1)+v(i,j-1)) )/dy  )&
+    - dt/dx*(p(i+1,j)-p(i,j)) &
+    + dt*1.0d0/Re*( (u(i+1,j)-2.0d0*u(i,j)+u(i-1,j))/dx/dx +(u(i,j+1)-2.0d0*u(i,j)+u(i,j-1))/dy/dy )
             enddo
         enddo
 
@@ -153,10 +152,10 @@
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         do i=2,N
             do j=2,M-1
-                vn(i,j) = v(i,j) - dt* ( 0.25d0*(u(i,j)+u(i-1,j)+u(i,j+1)+u(i-1,j+1))*(v(i+1,j)-v(i-1,j))/2.0d0/dx &
-                                           + v(i,j)*(v(i,j+1)-v(i,j-1))/2.0d0/dy ) &
-                - dt/dy*(p(i,j+1)-p(i,j)) &
-                + dt*1.0d0/Re*( (v(i+1,j)-2.0d0*v(i,j)+v(i-1,j))/dx/dx+(v(i,j+1)-2.0d0*v(i,j)+v(i,j-1))/dy/dy )
+    vn(i,j) = v(i,j) - dt* ( 0.25d0*( (u(i,j)+u(i,j+1))*(v(i,j)+v(i+1,j))-(u(i-1,j)+u(i-1,j+1))*(v(i,j)+v(i-1,j)) )/dx &
+    +(v(i,j+1)*v(i,j+1)-v(i,j-1)*v(i,j-1))/2.0d0/dy ) &
+    - dt/dy*(p(i,j+1)-p(i,j)) &
+    + dt*1.0d0/Re*( (v(i+1,j)-2.0d0*v(i,j)+v(i-1,j))/dx/dx+(v(i,j+1)-2.0d0*v(i,j)+v(i,j-1))/dy/dy )
             enddo
         enddo
 
@@ -243,7 +242,7 @@
         write(*,*) itc,' ',error
 
 !!!        open(unit=01,file='error.dat',status='unknown',position='append')
-!!!        if (MOD(itc,2000).EQ.0) then
+!!!        if (MOD(itc,100).EQ.0) then
 !!!            write(01,*) itc,' ',error
 !!!        endif
 !!!        close(01)

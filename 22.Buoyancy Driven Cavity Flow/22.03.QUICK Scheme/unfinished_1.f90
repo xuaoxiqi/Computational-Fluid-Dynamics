@@ -30,8 +30,8 @@
         c = 1.5d0
         c2 = c*c   ! c2 = 2.25d0
         Pr = 0.71d0
-        Ra = 1e4
-        dt = 1e-4
+        Ra = 1e3
+        dt = 1e-5
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
         !!! eps = 1e-8
@@ -54,13 +54,13 @@
             call calpn(N,M,dx,dy,dt,c2,p,un,vn,pn)
 
 !!! Solve Energy Equation
-            call caltn(N,M,dx,dy,dt,T,Tn,un,vn)
+            call calT(N,M,dx,dy,dt,T,un,vn)
 
 !!! check convergence
-            call convergence(N,M,dt,c2,error,u,v,p,T,un,vn,pn,Tn,itc)
+            call convergence(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
 
 !!! output preliminary results
-            if (MOD(itc,1000).EQ.0) then
+            if (MOD(itc,5).EQ.0) then
                 call caluvpt(N,M,u,v,p,T,uc,vc,pc,Tc)
                 call calpsi(N,M,dx,dy,uc,vc,psi)
                 k = k+1
@@ -330,99 +330,91 @@
         end subroutine calpn
 
 
-        subroutine caltn(N,M,dx,dy,dt,T,Tn,u,v)
+!!! compute temperature field
+        subroutine calT(N,M,dt,dx,dy,un,vn,T)
         implicit none
         integer :: i, j, N, M
-        real(8) :: dx, dy, dt
-        real(8) :: fw, fe, fs, fn, df, aw, aww, ae, aee, as, ass, an, ann,ap
-        real(8) :: alpha
-        real(8) :: T(N+1,M+1), Tn(N+1,M+1), u(N,M+1), v(N+1,M)
+        real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
+        real(8) :: T(N+1,M+1), un(N,M+1), vn(N+1,M), RT(N+1,M+1), Ti(N+1,M+1)
 
-       ! Interior points using QUCIK Sheme
-        do i=3,N-1
-            do j=3,M-1
+        call REST(N,M,dx,dy,dt,un,vn,T,RT)
+        do i=2,N
+            do j=2,M
+                Ti(i,j) = T(i,j)+dt*RT(i,j)
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,Ti)
 
-                fw = u(i-1,j)*dy
-                fe = u(i,j)*dy
-                fs = v(i,j-1)*dx
-                fn = v(i,j)*dx
-                df = fe-fw+fn-fs
+        call REST(N,M,dx,dy,dt,un,vn,Ti,RT)
+        do i=2,N
+            do j=2,M
+                Ti(i,j) = 0.75d0*T(i,j)+0.25d0*(Ti(i,j)+dt*RT(i,j))
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,Ti)
 
-                !!! common coefficient in 3rd-order upwind QUICK Scheme
-                aw = 1.0d0+0.75d0*alpha(fw)*fw+0.125d0*alpha(fe)*fe+0.375d0*(1.0d0-alpha(fw))*fw
-                aww = -0.125d0*alpha(fw)*fw
-                ae = 1.0d0-0.375d0*alpha(fe)*fe-0.75d0*(1.0-alpha(fe))*fe-0.125d0*(1.0d0-alpha(fw))*fw
-                aee = 0.125d0*(1.0d0-alpha(fe))*fe
-                as = 1.0d0+0.75d0*alpha(fs)*fs+0.125d0*alpha(fn)*fn+0.375d0*(1.0d0-alpha(fs))*fs
-                ass = -0.125d0*alpha(fs)*fs
-                an = 1.0d0-0.375d0*alpha(fn)*fn-0.75d0*(1.0-alpha(fn))*fn-0.125d0*(1.0d0-alpha(fs))*fs
-                ann = 0.125d0*(1.0d0-alpha(fn))*fn
-                ap = aw+ae+as+an+aww+aee+ass+ann+df
+        call REST(N,M,dx,dy,dt,un,vn,Ti,RT)
+        do i=2,N
+            do j=2,M
+                T(i,j) = 1.0d0/3.0d0*T(i,j)+2.0d0/3.0d0*(Ti(i,j)+dt*RT(i,j))
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,T)
 
-                Tn(i,j) = T(i,j) + dt/dx/dy*( -ap*T(i,j)+aw*T(i-1,j)+ae*T(i+1,j)+aww*T(i-2,j)+aee*T(i+2,j)&
-                                +as*T(i,j-1)+an*T(i,j+1)+ass*T(i,j-2)+ann*T(i,j+2) )
+        return
+        end subroutine calT
+
+        subroutine REST(N,M,dx,dy,dt,un,vn,T,RT)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
+        real(8) :: T(N+1,M+1), un(N,M+1), vn(N+1,M), RT(N+1,M+1)
+
+       ! Interior points using FTCS Sheme
+        do i=2,N
+            do j=2,M
+                dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
+                dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
+!        dTx1 = (un(i,j)*(0.25d0*T(i,j+1)+0.25d0*T(i+1,j+1)+1.5d0*T(i,j)+1.5d0*T(i+1,j)+0.25d0*T(i,j-1)+0.25d0*T(i+1,j-1))*0.25d0 &
+!        -un(i-1,j)*(0.25d0*T(i-1,j+1)+0.25d0*T(i,j+1)+1.5d0*T(i-1,j)+1.5d0*T(i,j)+0.25d0*T(i-1,j-1)+0.25d0*T(i,j-1))*0.25d0)/dx
+!        dTy1 = (vn(i,j)*(0.25d0*T(i-1,j+1)+0.25d0*T(i-1,j)+1.5d0*T(i,j+1)+1.5d0*T(i,j)+0.25d0*T(i+1,j+1)+0.25d0*T(i+1,j))*0.25d0 &
+!        -vn(i,j-1)*(0.25d0*T(i-1,j)+0.25d0*T(i-1,j-1)+1.5d0*T(i,j)+1.5d0*T(i,j-1)+0.25d0*T(i+1,j)+0.25d0*T(i+1,j-1))*0.25d0)/dy
+                dTx1 = (un(i,j)*(T(i,j)+T(i+1,j))/2.0d0-un(i-1,j)*(T(i,j)+T(i-1,j))/2.0d0)/dx
+                dTy1 = (vn(i,j)*(T(i,j)+T(i,j+1))/2.0d0-vn(i,j-1)*(T(i,j)+T(i,j-1))/2.0d0)/dy
+                RT(i,j) = dTx2+dTy2-dTx1-dTy1
             enddo
         enddo
 
-
-        do i=3,N-1
-            call upbound_T(N,M,dx,dy,dt,T,Tn,u,v,i,2)
-            call upbound_T(N,M,dx,dy,dt,T,Tn,u,v,i,M)
-        enddo
-
-        do j=3,M-1
-            call upbound_T(N,M,dx,dy,dt,T,Tn,u,v,2,j)
-            call upbound_T(N,M,dx,dy,dt,T,Tn,u,v,N,j)
-        enddo
-
-        !Top and bottom side boundary(Neumann B.C.)
-        do i=2,N
-            Tn(i,1) = -Tn(i,2)
-            Tn(i,M+1) = -Tn(i,M)
-        enddo
-        !Left and right side boundary(Dirichlet B.C.)
-        do j=1,M+1
-            Tn(1,j) = 2.0d0-Tn(2,j)
-            Tn(N+1,j) = -Tn(N,j)
-        enddo
-
         return
-        end subroutine caltn
+        end subroutine REST
 
 
-!!! compute interior region boundary with 1st-order upwind discrete scheme-->un
-        subroutine upbound_T(N,M,dx,dy,dt,T,Tn,u,v,i,j)
+        subroutine bcT(N,M,dx,dy,dt,T)
         implicit none
-        integer :: N, M, i, j
+        integer :: i, j, N, M
         real(8) :: dx, dy, dt
-        real(8) :: u(N,M+1),v(N+1,M),T(N+1,M+1),Tn(N,M+1)
-        real(8) :: fw, fe, fs, fn, aw, ae, as, an, df, ap
+        real(8) :: T(N+1,M+1)
 
-        fw = u(i-1,j)*dy
-        fe = u(i,j)*dy
-        fs = v(i,j-1)*dx
-        fn = v(i,j)*dx
-        df = fe-fw+fn-fs
+        do i=2,N
+            T(i,1) = T(i,2)
+            T(i,M+1) = T(i,M)
+        enddo
 
-        aw = 1.0d0+MAX(fw,0.0d0)
-        ae = 1.0d0+MAX(0.0d0,-fe)
-        as = 1.0d0+MAX(fs,0.0d0)
-        an = 1.0d0+MAX(0.0d0,-fn)
-
-        ap = aw+ae+as+an+df
-
-        Tn(i,j) = T(i,j)+dt/dx/dy*(-ap*T(i,j)+aw*T(i-1,j)+ae*T(i+1,j)+as*T(i,j-1)+an*T(i,j+1))
+        do j=1,M+1
+            T(1,j) = 2.0d0-T(2,j)
+            T(N+1,j) = -T(N,j)
+        enddo
 
         return
-        end subroutine upbound_T
+        end subroutine bcT
 
 
 !!! check convergence
-        subroutine convergence(N,M,dt,c2,error,u,v,p,T,un,vn,pn,Tn,itc)
+        subroutine convergence(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
         implicit none
         integer :: N, M, i, j, itc
         real(8) :: dt, c2, error, temp
-        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), T(N+1,M+1), un(N,M+1), vn(N+1,M), pn(N+1,M+1), Tn(N+1,M+1)
+        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), un(N,M+1), vn(N+1,M), pn(N+1,M+1)
         real(8) :: erru, errv, errp
 
         itc = itc+1
@@ -454,16 +446,16 @@
             enddo
         enddo
 
-        T = Tn
 
         error = MAX(erru,(MAX(errv,errp)))
 
-        open(unit=01,file='error.dat',status='unknown',position='append')
-
         write(*,*) itc,' ',error
-        !!!write(01,*) itc,' ',error
 
-        close(01)
+!        open(unit=01,file='error.dat',status='unknown',position='append')
+!        if (MOD(itc,100).EQ.0) then
+!            write(01,*) itc,' ',error
+!        endif
+!        close(01)
 
         return
         end subroutine convergence

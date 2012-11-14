@@ -1,5 +1,5 @@
 
-!!!    This program sloves Lid Driven Cavity Flow problem using Artificial Compressibility Method
+!!!    This program sloves Buoyancy Driven Cavity Flow problem using Artificial Compressibility Method
 !!!    Consider N-S Equation in conservative form
 !!!    Copyright (C) 2012  Ao Xu
 !!!    This work is licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License.
@@ -22,68 +22,72 @@
         implicit none
         integer, parameter :: N=81,M=81
         integer :: itc, itc_max, k
-        real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),psi(N,M),X(N), Y(M)
-        real(8) :: un(N,M+1),vn(N+1,M),pn(N+1,M+1),uc(N,M),vc(N,M),pc(N,M)
-        real(8) :: c, c2, Re, dt, dx, dy, eps, error
+        real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),T(N+1,M+1),psi(N,M),X(N), Y(M)
+        real(8) :: un(N,M+1),vn(N+1,M),pn(N+1,M+1),uc(N,M),vc(N,M),pc(N,M),Tc(N,M)
+        real(8) :: c, c2, Ra, Pr, dt, dx, dy, eps, error
 
 !!! input initial data
         c = 1.5d0
-        c2 = c*c   ! c2 = 2.25d0
-        Re = 1000.0d0
-        dt = 1e-4
+        c2 = c*c
+        Ra = 1e5
+        Pr = 0.71d0
+        dt = 1e-5
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
-        eps = 1e-8
+        eps = 1e-3
         itc = 0
-        itc_max = 5*1e5
+        itc_max = 1e7
         error=100.00d0
         k = 0
 
 !!! set up initial flow field
-        call initial(N,M,dx,dy,X,Y,u,v,p,psi)
+        call initial(N,M,dx,dy,X,Y,u,v,p,T,psi)
 
-        do while((error.GT.eps).AND.(itc.LT.itc_max))
+        do while(itc.LT.itc_max)
 
             error=0.0d0
 
 !!! Solve Momentum Equation
-            call solmom(N,M,dx,dy,dt,Re,u,v,p,un,vn)
+            call solmom(N,M,dx,dy,dt,Ra,Pr,u,v,p,T,un,vn)
 
 !!! Solve Pressure Equation
             call calpn(N,M,dx,dy,dt,c2,p,un,vn,pn)
 
+!!! Solve Temperature Equation
+            call calT(N,M,dt,dx,dy,un,vn,T)
+
 !!! check convergence
             call check(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
-
 
 !!! output preliminary results
             if (MOD(itc,10000).EQ.0) then
 
-                !!! compute velocity components u, v and pressure p
-                call caluvp(N,M,u,v,p,uc,vc,pc)
+                !!! compute velocity components u, v, pressure p, temperature T
+                call caluvpt(N,M,u,v,p,T,uc,vc,pc,Tc)
 
                 call calpsi(N,M,dx,dy,uc,vc,psi)
                 k = k+1
-                call output(N,M,X,Y,uc,vc,psi,k)
+                call output(N,M,X,Y,uc,vc,psi,Tc,k)
             endif
 
         enddo
-!!! compute velocity components u, v and pressure p
-        call caluvp(N,M,u,v,p,uc,vc,pc)
+!!! compute velocity components u, v, pressure p, temperature T
+        call caluvpt(N,M,u,v,p,T,uc,vc,pc,Tc)
 
 !!! compute Streamfunction
         call calpsi(N,M,dx,dy,uc,vc,psi)
 
 !!! output data file
-        call output(N,M,X,Y,uc,vc,psi,k)
+        call output(N,M,X,Y,uc,vc,psi,Tc,k)
 
         write(*,*)
         write(*,*) '************************************************************'
-        write(*,*) 'This program sloves Lid Driven Cavity Flow problem'
+        write(*,*) 'This program sloves Buoyancy Driven Cavity Flow problem'
         write(*,*) 'using Artificial Compressibility Method'
         write(*,*) 'Consider N-S Equation in conservative form'
         write(*,*) 'N =',N,',       M =',M
-        write(*,*) 'Re =',Re
+        write(*,*) 'Ra =',Ra
+        write(*,*) 'Pr =',Pr
         write(*,*) 'dt =',dt
         write(*,*) 'c (Artificial Compressibility coefficient) =',c
         write(*,*) 'eps =',eps
@@ -97,11 +101,11 @@
 
 
 !!! set up initial flow field
-        subroutine initial(N,M,dx,dy,X,Y,u,v,p,psi)
+        subroutine initial(N,M,dx,dy,X,Y,u,v,p,T,psi)
         implicit none
         integer :: N, M, i, j
         real(8) :: dx, dy
-        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), psi(N,M), uc(N,M), vc(N,M), X(N), Y(M)
+        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), T(N+1,M+1), psi(N,M), X(N), Y(M)
 
         do i=1,N
             X(i) = (i-1)*dx
@@ -114,10 +118,11 @@
         u = 0.0d0
         v = 0.0d0
         psi = 0.0d0
+        T = 0.0d0
 
-        do i=1,N
-            u(i,M+1) = 4.0d0/3.0d0
-            u(i,M) = 2.0d0/3.0d0
+        do j=1,N+1
+            T(1,j) = 4.0d0/3.0d0
+            T(2,j) = 2.0d0/3.0d0
         enddo
 
         return
@@ -125,18 +130,18 @@
 
 
 !!! Solve Momentum Equation
-        subroutine solmom(N,M,dx,dy,dt,Re,u,v,p,un,vn)
+        subroutine solmom(N,M,dx,dy,dt,Ra,Pr,u,v,p,T,un,vn)
         implicit none
         integer :: N, M, i, j
-        real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),un(N,M+1),vn(N+1,M)
-        real(8) :: Re, dx, dy, dt
+        real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),T(N+1,M+1),un(N,M+1),vn(N+1,M)
+        real(8) :: Ra, Pr, dx, dy, dt
 
         do i=2,N-1
             do j=2,M
     un(i,j) = u(i,j) - dt*(  (u(i+1,j)*u(i+1,j)-u(i-1,j)*u(i-1,j))/2.0d0/dx &
     +0.25d0*( (u(i,j)+u(i,j+1))*(v(i,j)+v(i-1,j))-(u(i,j)+u(i,j-1))*(v(i-1,j-1)+v(i,j-1)) )/dy  )&
     - dt/dx*(p(i+1,j)-p(i,j)) &
-    + dt*1.0d0/Re*( (u(i+1,j)-2.0d0*u(i,j)+u(i-1,j))/dx/dx +(u(i,j+1)-2.0d0*u(i,j)+u(i,j-1))/dy/dy )
+    + dt*Pr*( (u(i+1,j)-2.0d0*u(i,j)+u(i-1,j))/dx/dx +(u(i,j+1)-2.0d0*u(i,j)+u(i,j-1))/dy/dy )
             enddo
         enddo
 
@@ -147,7 +152,7 @@
 
         do i=1,N
             un(i,1) = -un(i,2)
-            un(i,M+1) = 2.0d0-un(i,M)
+            un(i,M+1) = -un(i,M)
         enddo
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         do i=2,N
@@ -155,7 +160,9 @@
     vn(i,j) = v(i,j) - dt* ( 0.25d0*( (u(i,j)+u(i,j+1))*(v(i,j)+v(i+1,j))-(u(i-1,j)+u(i-1,j+1))*(v(i,j)+v(i-1,j)) )/dx &
     +(v(i,j+1)*v(i,j+1)-v(i,j-1)*v(i,j-1))/2.0d0/dy ) &
     - dt/dy*(p(i,j+1)-p(i,j)) &
-    + dt*1.0d0/Re*( (v(i+1,j)-2.0d0*v(i,j)+v(i-1,j))/dx/dx+(v(i,j+1)-2.0d0*v(i,j)+v(i,j-1))/dy/dy )
+    + dt*Pr*( (v(i+1,j)-2.0d0*v(i,j)+v(i-1,j))/dx/dx+(v(i,j+1)-2.0d0*v(i,j)+v(i,j-1))/dy/dy ) &
+    + dt*Ra*Pr*(T(i,j)+T(i,j+1))/2.0d0
+!    + dt*Ra*Pr*0.25d0*(0.25d0*T(i-1,j+1)+0.25d0*T(i-1,j)+0.25d0*T(i+1,j+1)+0.25d0*T(i+1,j)+1.5d0*T(i,j+1)+1.5d0*T(i,j))
             enddo
         enddo
 
@@ -180,10 +187,18 @@
         real(8) :: p(N+1,M+1), un(N,M+1), vn(N+1,M), pn(N+1,M+1)
         real(8) :: dx, dy, dt, c2
 
-        do i=2,N
-            do j=2,M
-                pn(i,j) = p(i,j)-dt*c2*(  ( un(i,j)-un(i-1,j) )/dx + ( vn(i,j)-vn(i,j-1) ) /dy  )
+        do i=2,N-1
+            do j=2,M-1
+                pn(i,j) = p(i,j)-dt*c2*(  ( un(i+1,j)-un(i-1,j) )/2.0d0/dx + ( vn(i,j+1)-vn(i,j-1) ) /2.0d0/dy  )
             enddo
+        enddo
+
+
+        do j=2,M-1
+            pn(N,j) = p(i,j)-dt*c2*(  ( un(N,j)-un(N-1,j) )/dx + ( vn(N,j)-vn(N,j-1) ) /dy  )
+        enddo
+        do i=2,N
+            pn(i,M) = p(i,j)-dt*c2*(  ( un(i,M)-un(i-1,M) )/dx + ( vn(i,M)-vn(i,M-1) ) /dy  )
         enddo
 
         !!! boundary condition
@@ -200,6 +215,80 @@
         end subroutine calpn
 
 
+!!! compute temperature field
+        subroutine calT(N,M,dt,dx,dy,un,vn,T)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
+        real(8) :: T(N+1,M+1), un(N,M+1), vn(N+1,M), RT(N+1,M+1), Ti(N+1,M+1)
+
+        call REST(N,M,dx,dy,dt,un,vn,T,RT)
+        do i=2,N
+            do j=2,M
+                Ti(i,j) = T(i,j)+dt*RT(i,j)
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,Ti)
+
+        call REST(N,M,dx,dy,dt,un,vn,Ti,RT)
+        do i=2,N
+            do j=2,M
+                Ti(i,j) = 0.75d0*T(i,j)+0.25d0*(Ti(i,j)+dt*RT(i,j))
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,Ti)
+
+        call REST(N,M,dx,dy,dt,un,vn,Ti,RT)
+        do i=2,N
+            do j=2,M
+                T(i,j) = 1.0d0/3.0d0*T(i,j)+2.0d0/3.0d0*(Ti(i,j)+dt*RT(i,j))
+            enddo
+        enddo
+        call bcT(N,M,dx,dy,dt,T)
+
+        return
+        end subroutine calT
+
+        subroutine REST(N,M,dx,dy,dt,un,vn,T,RT)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
+        real(8) :: T(N+1,M+1), un(N,M+1), vn(N+1,M), RT(N+1,M+1)
+
+       ! Interior points using FTCS Sheme
+        do i=2,N
+            do j=2,M
+                dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
+                dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
+                dTx1 = (un(i,j)*(T(i,j)+T(i+1,j))/2.0d0-un(i-1,j)*(T(i,j)+T(i-1,j))/2.0d0)/dx
+                dTy1 = (vn(i,j)*(T(i,j)+T(i,j+1))/2.0d0-vn(i,j-1)*(T(i,j)+T(i,j-1))/2.0d0)/dy
+                RT(i,j) = dTx2+dTy2-dTx1-dTy1
+            enddo
+        enddo
+
+        return
+        end subroutine REST
+
+
+        subroutine bcT(N,M,dx,dy,dt,T)
+        implicit none
+        integer :: i, j, N, M
+        real(8) :: dx, dy, dt
+        real(8) :: T(N+1,M+1)
+
+        do i=2,N
+            T(i,1) = T(i,2)
+            T(i,M+1) = T(i,M)
+        enddo
+
+        do j=1,M+1
+            T(1,j) = 2.0d0-T(2,j)
+            T(N+1,j) = -T(N,j)
+        enddo
+
+        return
+        end subroutine bcT
+
 !!! check convergence
         subroutine check(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
         implicit none
@@ -213,60 +302,66 @@
         errv = 0.0d0
         errp = 0.0d0
 
-        do i=1,N
-            do j=1,M+1
-                temp = ABS(un(i,j)-u(i,j))/dt
-                if(temp.GT.erru) erru = temp
-                u(i,j) = un(i,j)
-            enddo
-        enddo
+!!        do i=1,N
+!!            do j=1,M+1
+!!                temp = ABS(un(i,j)-u(i,j))/dt
+!!                if(temp.GT.erru) erru = temp
+!!                u(i,j) = un(i,j)
+!!            enddo
+!!        enddo
+!!
+!!        do i=1,N+1
+!!            do j=1,M
+!!                temp = ABS(vn(i,j)-v(i,j))/dt
+!!                if(temp.GT.errv) errv = temp
+!!                v(i,j) = vn(i,j)
+!!            enddo
+!!        enddo
+!!
+!!        do i=1,N+1
+!!            do j=1,M+1
+!!                temp = ABS(pn(i,j)-p(i,j))/c2/dt
+!!                if(temp.GT.errp) errp = temp
+!!                p(i,j) = pn(i,j)
+!!            enddo
+!!        enddo
+!!
+!!        error = MIN(erru,(MIN(errv,errp)))
 
-        do i=1,N+1
-            do j=1,M
-                temp = ABS(vn(i,j)-v(i,j))/dt
-                if(temp.GT.errv) errv = temp
-                v(i,j) = vn(i,j)
-            enddo
-        enddo
+        u = un
+        v = vn
+        p = pn
+        error = 1.0d0
 
-        do i=1,N+1
-            do j=1,M+1
-                temp = ABS(pn(i,j)-p(i,j))/c2/dt
-                if(temp.GT.errp) errp = temp
-                p(i,j) = pn(i,j)
-            enddo
-        enddo
+        !write(*,*) itc,' ',error
 
-        error = MAX(erru,(MAX(errv,errp)))
-
-        write(*,*) itc,' ',error
-
-!!!        open(unit=01,file='error.dat',status='unknown',position='append')
-!!!        if (MOD(itc,100).EQ.0) then
-!!!            write(01,*) itc,' ',error
-!!!        endif
-!!!        close(01)
+!        open(unit=01,file='error.dat',status='unknown',position='append')
+!        if (MOD(itc,100).EQ.0) then
+!            write(01,*) itc,' ',error
+!        endif
+!        close(01)
 
         return
         end subroutine check
 
 
 !!! compute velocity components u, v and pressure p
-        subroutine caluvp(N,M,u,v,p,uc,vc,pc)
+        subroutine caluvpt(N,M,u,v,p,T,uc,vc,pc,Tc)
         implicit none
         integer :: N, M, i, j
-        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), uc(N,M), vc(N,M), pc(N,M)
+        real(8) :: u(N,M+1), v(N+1,M), p(N+1,M+1), T(N+1,M+1), uc(N,M), vc(N,M), pc(N,M), Tc(N,M)
 
         do i=1,N
             do j=1,M
                 uc(i,j) = 0.5d0*(u(i,j)+u(i,j+1))
                 vc(i,j) = 0.5d0*(v(i,j)+v(i+1,j))
                 pc(i,j) = 0.25d0*(p(i,j)+p(i+1,j)+p(i,j+1)+p(i+1,j+1))
+                Tc(i,j) = 0.25d0*(T(i,j)+T(i+1,j)+T(i,j+1)+T(i+1,j+1))
             enddo
         enddo
 
         return
-        end subroutine caluvp
+        end subroutine caluvpt
 
 
 !!! compute Streamfunction
@@ -306,10 +401,10 @@
         end subroutine calpsi
 
 !!! output data file
-        subroutine output(N,M,X,Y,uc,vc,psi,k)
+        subroutine output(N,M,X,Y,uc,vc,psi,Tc,k)
         implicit none
         integer :: N, M, i, j, k
-        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), psi(N,M)
+        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), psi(N,M), Tc(N,M)
 
         character*16 filename
 
@@ -325,13 +420,13 @@
         write(02,103) N, M
         do j=1,M
             do i = 1,N
-                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), psi(i,j)
+                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), psi(i,j), Tc(i,j)
             enddo
         enddo
 
 100     format(2x,10(e12.6,'      '))
-101     format('Title="Lid Driven Cavity Flow"')
-102     format('Variables=x,y,u,v,psi')
+101     format('Title="Buoyancy Driven Cavity Flow"')
+102     format('Variables=x,y,u,v,psi,T')
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 
         close(02)
