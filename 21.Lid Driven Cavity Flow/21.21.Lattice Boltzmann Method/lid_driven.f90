@@ -22,66 +22,63 @@
         integer, parameter :: N=81,M=81
         integer :: i, j, itc, itc_max, k
         integer :: iwall(N,M)
-        real(8) :: Re, cs2, U_ref, L_ref, dx, dy, tau, omega
+        real(8) :: Re, cs2, U_ref, L_ref, dx, dy, tau
         real(8) :: eps, error
-        real(8) :: X(N), Y(M), u(N,M), v(N,M), up(N,M), vp(N,M), rho(N,M), p(N,M), psi(N,M)
+        real(8) :: xp(N), yp(M), u(N,M), v(N,M), up(N,M), vp(N,M), rho(N,M), p(N,M), psi(N,M)
         real(8) :: t_k(0:8), f(0:8,N,M), un(0:8)
-        real(8) :: xv(9), yv(9)
+        real(8) :: xv(0:8), yv(0:8)
         data xv/0.0d0,1.0d0,0.0d0, -1.0d0, 0.0d0, 1.0d0, -1.0d0, -1.0d0, 1.0d0/
         data yv/0.0d0,0.0d0,1.0d0, 0.0d0, -1.0d0, 1.0d0, 1.0d0, -1.0d0, -1.0d0/
 
-!!! input initial data
-        Re = 100.0d0
-        cs2 = 1.0d0/3.0d0
-        U_ref = 1.0d0
-        L_ref = 1.0d0
-        dx = L_ref/N
-        dy = L_ref/M
-        do i=1,N
-            X(i) = (i-1)*dx
-        enddo
-        do j=1,M
-            Y(j) = (j-1)*dy
-        enddo
-        tau =  1.0d0/cs2*U_ref*(L_ref-1.d0)/Re+0.5d0
-        omega = 1.0d0/tau
-        itc = 0
-        itc_max = 1000
-        eps = 1e-8
-        k = 0
-!!! set up initial flow field
-        call initial(N,M,u,v,rho,psi,iwall,U_ref,cs2,t_k,xv,yv,un,f)
+!!!     D2Q9 Lattice Vector Properties:
+!!!              6   2   5
+!!!                \ | /
+!!!              3 - 0 - 1
+!!!                / | \
+!!!              7   4   8
 
-        do while(itc.LT.itc_max)
+!!! input initial data
+        Re = 1000.0d0
+        cs2 = 1.0d0/3.0d0
+        U_ref = 0.1d0
+        L_ref = N
+        dx = 1.0d0/float(N)
+        dy = 1.0d0/float(M)
+        tau = 3.0d0*U_ref*L_ref/Re+0.5d0
+        itc = 0
+        itc_max = 1e6
+        eps = 1e-4
+        k = 0
+        error = 100.0d0
+
+!!! set up initial flow field
+        call initial(N,M,dx,dy,xp,yp,u,v,rho,psi,iwall,U_ref,cs2,t_k,xv,yv,un,f)
+
+        do while((error.GT.eps).AND.(itc.LT.itc_max))
 
             call propagate(N,M,f)
 
-            call relaxation(N,M,iwall,u,v,xv,yv,rho,f,t_k,cs2,omega)
-
             call bounceback(N,M,f)
 
-            call caluv(N,M,u,v,up,vp)
+            call relaxation(N,M,iwall,u,v,xv,yv,rho,f,t_k,cs2,tau)
 
             call check(N,M,iwall,u,v,up,vp,itc,error)
 
-!!! output preliminary results
-            if (MOD(itc,10000).EQ.0) then
-
-!                !!! compute velocity components u, v and pressure p
-!                call caluvp(N,M,u,v,p,uc,vc,pc)
-!
-!                call calpsi(N,M,dx,dy,uc,vc,psi)
-!                k = k+1
-!                call output(N,M,X,Y,uc,vc,psi,k)
+            if(MOD(itc,10000).EQ.0) then
+                call calpsi(N,M,dx,dy,up,vp,psi)
+                k = k+1
+                call output(N,M,xp,yp,up,vp,psi,k)
             endif
 
         enddo
+
 
 !!! compute Streamfunction
         call calpsi(N,M,dx,dy,up,vp,psi)
 
 !!! output data file
-        call output(N,M,X,Y,up,vp,psi,k)
+        k = k+1
+        call output(N,M,xp,yp,up,vp,psi,k)
 
         write(*,*)
         write(*,*) '************************************************************'
@@ -98,14 +95,22 @@
         stop
         end program main
 
-        subroutine initial(N,M,u,v,rho,psi,iwall,U_ref,cs2,t_k,xv,yv,un,f)
+        subroutine initial(N,M,dx,dy,xp,yp,u,v,rho,psi,iwall,U_ref,cs2,t_k,xv,yv,un,f)
         implicit none
-        integer :: x, y, N, M, i
+        integer :: x, y, N, M, i, j
         integer :: iwall(N,M)
+        real(8) :: dx, dy
         real(8) :: U_ref, cs2, us2
+        real(8) :: xp(N), yp(M)
         real(8) :: t_k(0:8), u(N,M), v(N,M), rho(N,M), psi(N,M), xv(0:8), yv(0:8), un(0:8)
         real(8) :: f(0:8,N,M)
 
+        do i=1,N
+            xp(i) = (i-1)*dx
+        enddo
+        do j=1,M
+            yp(j) = (j-1)*dy
+        enddo
         psi = 0.0d0
 
         t_k(0) = 4.0d0/9.0d0
@@ -116,14 +121,12 @@
             t_k(i) = 1.0d0/36.0d0
         enddo
 
+        iwall = 0
+        u = 0.0d0
+        v = 0.0d0
+        rho = 1.0d0
         do x=1,N
-            do y=1,M
-                iwall(x,y) = 0
-                u(x,y) = 0.0d0
-                if(y.EQ.M) u(x,y) = U_ref
-                v(x,y) = 0.0d0
-                rho(x,y) = 1.0d0
-            enddo
+            u(x,M) = U_ref
         enddo
 
         !Wall type
@@ -203,13 +206,15 @@
         return
         end subroutine propagate
 
-        subroutine relaxation(N,M,iwall,u,v,xv,yv,rho,f,t_k,cs2,omega)
+        subroutine relaxation(N,M,iwall,u,v,xv,yv,rho,f,t_k,cs2,tau)
         implicit none
-        integer :: x, y, N, M, i
+        integer :: N, M
+        integer :: x, y, i
         integer :: iwall(N,M)
-        real(8) :: cs2, us2, omega
-        real(8) :: rho(N,M), u(N,M), v(N,M), u2(N,M)
-        real(8) :: xv(0:8), yv(0:8), un(0:8), t_k(0:8), feq(0:8,N,M), f(0:8,N,M)
+        real(8) :: cs2, tau
+        real(8) :: us2
+        real(8) :: u(N,M), v(N,M), xv(0:8), yv(0:8), rho(N,M), f(0:8,N,M), t_k(0:8)
+        real(8) :: un(0:8), feq(0:8,N,M)
 
         do x=1,N
             do y=1,M-1
@@ -222,11 +227,11 @@
                     !data yv/0.0d0,0.0d0,1.0d0, 0.0d0, -1.0d0, 1.0d0, 1.0d0, -1.0d0, -1.0d0/
                     u(x,y) = (f(1,x,y)-f(3,x,y)+f(5,x,y)-f(6,x,y)-f(7,x,y)+f(8,x,y))/rho(x,y)
                     v(x,y) = (f(2,x,y)-f(4,x,y)+f(5,x,y)+f(6,x,y)-f(7,x,y)-f(8,x,y))/rho(x,y)
-                    u2(x,y) = u(x,y)*u(x,y)+v(x,y)
+                    us2 = u(x,y)*u(x,y)+v(x,y)*v(x,y)
                     do i=0,8
                         un(i) = u(x,y)*xv(i) + v(x,y)*yv(i)
                         feq(i,x,y) = t_k(i)*rho(x,y)*(1.0d0+un(i)/cs2+un(i)*un(i)/(2.0d0*cs2*cs2)-us2/(2.0d0*cs2))
-                        f(i,x,y) = f(i,x,y)-omega*(f(i,x,y)-feq(i,x,y))
+                        f(i,x,y) = f(i,x,y)-1.0d0/tau*(f(i,x,y)-feq(i,x,y))
                     enddo
 
                     if((x.EQ.1).AND.(y.EQ.1)) then
@@ -294,21 +299,6 @@
         return
         end subroutine bounceback
 
-        subroutine caluv(N,M,u,v,up,vp)
-        implicit none
-        integer :: x, y, N, M
-        real(8) :: u(N,M), v(N,M), up(N,M), vp(N,M)
-
-        do x=1,N
-            do y=1,M
-                up(x,y) = u(x,y)
-                vp(x,y) = v(x,y)
-            enddo
-        enddo
-
-        return
-        end subroutine caluv
-
 
         subroutine check(N,M,iwall,u,v,up,vp,itc,error)
         implicit none
@@ -319,15 +309,23 @@
 
         itc = itc+1
         error = 0.0d0
+        if(itc.EQ.1) error = 10.0d0
+        if(itc.EQ.2) error = 10.0d0
+        if(itc.EQ.3) error = 10.0d0
 
-        do x=1,N
-            do y=1,M-1
-                if(iwall(x,y).NE.2) then
-                    error  = error+SQRT((u(x,y)-up(x,y))*(u(x,y)-up(x,y))+(v(x,y)-vp(x,y))*(v(x,y)-vp(x,y))) &
-                                    /SQRT((u(x,y)+0.01)*(u(x,y)+0.01)+v(x,y)*v(x,y))
-                endif
+        if(itc.GT.3) then
+            do x=1,N
+                do y=1,M-1
+                    if(iwall(x,y).NE.2) then
+                        error  = error+SQRT((u(x,y)-up(x,y))*(u(x,y)-up(x,y))+(v(x,y)-vp(x,y))*(v(x,y)-vp(x,y))) &
+                                        /SQRT((u(x,y)+0.01)*(u(x,y)+0.01)+v(x,y)*v(x,y))
+                    endif
+                enddo
             enddo
-        enddo
+        endif
+
+        up = u
+        vp = v
 
         write(*,*) itc,' ',error
 
@@ -379,10 +377,10 @@
 
 
 !!! output data file
-        subroutine output(N,M,X,Y,u,v,psi,k)
+        subroutine output(N,M,xp,yp,up,vp,psi,k)
         implicit none
         integer :: N, M, i, j, k
-        real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M)
+        real(8) :: xp(N), yp(M), up(N,M), vp(N,M), psi(N,M)
 
         character*16 filename
 
@@ -399,7 +397,7 @@
 
         do j=1,M
             do i=1,N
-                write(02,100) X(i), Y(j), u(i,j), v(i,j), psi(i,j)
+                write(02,100) xp(i), yp(j), up(i,j), vp(i,j), psi(i,j)
             enddo
         enddo
 

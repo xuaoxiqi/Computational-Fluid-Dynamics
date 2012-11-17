@@ -67,6 +67,7 @@
         enddo
 
 !!! output data file
+        k = k+1
         call output(N,M,X,Y,u,v,psi,k)
 
         write(*,*)

@@ -41,8 +41,6 @@
 
         do while((error.GT.eps).AND.(itc.LT.itc_max))
 
-            error=0.0d0
-
 !!! Solve Pressure Equation
             call calpn(N,M,dx,dy,dt,Re,p,u,v,pn)
 
@@ -54,16 +52,14 @@
 
 !!! output preliminary results
             if (MOD(itc,10000).EQ.0) then
-
-                !!! compute velocity components u, v and pressure p
                 call caluvp(N,M,u,v,p,uc,vc,pc)
-
                 call calpsi(N,M,dx,dy,uc,vc,psi)
                 k = k+1
                 call output(N,M,X,Y,uc,vc,psi,k)
             endif
 
         enddo
+
 !!! compute velocity components u, v and pressure p
         call caluvp(N,M,u,v,p,uc,vc,pc)
 
@@ -71,6 +67,7 @@
         call calpsi(N,M,dx,dy,uc,vc,psi)
 
 !!! output data file
+        k = k+1
         call output(N,M,X,Y,uc,vc,psi,k)
 
         write(*,*)

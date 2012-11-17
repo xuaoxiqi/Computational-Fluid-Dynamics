@@ -43,8 +43,6 @@
 
         do while((error.GT.eps).AND.(itc.LT.itc_max))
 
-            error=0.0d0
-
 !!! Solve Momentum Equation with QUICK Scheme
             call solmom(N,M,dx,dy,dt,Re,u,v,p,un,vn)
 
@@ -71,6 +69,7 @@
         call calpsi(N,M,dx,dy,uc,vc,psi)
 
 !!! output data file
+        k = k+1
         call output(N,M,X,Y,uc,vc,psi,k)
 
         write(*,*)

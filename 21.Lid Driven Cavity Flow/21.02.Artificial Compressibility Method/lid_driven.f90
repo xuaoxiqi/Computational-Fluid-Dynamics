@@ -44,8 +44,6 @@
 
         do while((error.GT.eps).AND.(itc.LT.itc_max))
 
-            error=0.0d0
-
 !!! Solve Momentum Equation
             call solmom(N,M,dx,dy,dt,Re,u,v,p,un,vn)
 
@@ -55,19 +53,16 @@
 !!! check convergence
             call check(N,M,dt,c2,error,u,v,p,un,vn,pn,itc)
 
-
 !!! output preliminary results
             if (MOD(itc,10000).EQ.0) then
-
-                !!! compute velocity components u, v and pressure p
                 call caluvp(N,M,u,v,p,uc,vc,pc)
-
                 call calpsi(N,M,dx,dy,uc,vc,psi)
                 k = k+1
                 call output(N,M,X,Y,uc,vc,psi,k)
             endif
 
         enddo
+
 !!! compute velocity components u, v and pressure p
         call caluvp(N,M,u,v,p,uc,vc,pc)
 
@@ -75,6 +70,7 @@
         call calpsi(N,M,dx,dy,uc,vc,psi)
 
 !!! output data file
+        k = k+1
         call output(N,M,X,Y,uc,vc,psi,k)
 
         write(*,*)
