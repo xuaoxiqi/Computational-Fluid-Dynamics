@@ -19,7 +19,7 @@
 
         program main
         implicit none
-        integer, parameter :: N=81, M=81
+        integer, parameter :: N=129, M=129
         integer :: i, j, itc, itc_max, k
         real(8) :: dx, dy, Re, dt, eps, error
         real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M)
@@ -29,7 +29,7 @@
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
         dt = 1e-4
-        eps = 1e-4
+        eps = 1e-5
         itc = 0
         itc_max = 5*1e5
         error = 100.0d0
@@ -59,7 +59,7 @@
             call convergence(N,M,dt,RVOR,Rpsi,error,itc)
 
 !!! output preliminary results
-            if (MOD(itc,10000).EQ.0) then
+            if (MOD(itc,20000).EQ.0) then
                 k = k+1
                 call output(N,M,X,Y,u,v,psi,k)
             endif
@@ -275,7 +275,7 @@
         error = MAX(errvor,errpsi)
         if(itc.EQ.1) error = 100.0d0
 
-        write(*,*) itc,' ',error
+!        write(*,*) itc,' ',error
 
 !!!        open(unit=01,file='error.dat',status='unknown',position='append')
 !!!        if (MOD(itc,2000).EQ.0) then
