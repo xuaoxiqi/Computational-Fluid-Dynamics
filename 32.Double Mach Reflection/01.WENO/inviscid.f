@@ -1,81 +1,81 @@
 
 
-c     inviscid flux      	
-	subroutine fx(rk,uc)
+c     inviscid flux            
+      subroutine fx(rk,uc)
 c
       include "common.h"
-	include "para.h"
-	integer nstrt,nend
-	dimension w(-md:nxm),vx(-md:nxm),vy(-md:nxm),
+      include "para.h"
+      integer nstrt,nend
+      dimension w(-md:nxm),vx(-md:nxm),vy(-md:nxm),
      &      h(-md:nxm)
-	dimension uc(-md:nxm,-md:nym,4,0:4)
-c	real*8  evr(-1:nx,4,4),evl(-1:nx,4,4)
-	integer rk,i,j
+      dimension uc(-md:nxm,-md:nym,4,0:4)
+c      real*8  evr(-1:nx,4,4),evl(-1:nx,4,4)
+      integer rk,i,j
 c 
 c
-c	write(*,*) 'nxm=',nxm
+c      write(*,*) 'nxm=',nxm
       em=1.0e-15
 c     
 c-----begin of outer loop in y-dir-----------------
-	do j=0,ny
+      do j=0,ny
 
       am(1)=1.e-15
-	am(2)=1.e-15
-	am(3)=1.e-15
-	am(4)=1.e-15
+      am(2)=1.e-15
+      am(3)=1.e-15
+      am(4)=1.e-15
 
 c     /* compute flux and eigenvalues */
       do i=-md,nxm
-	den=uc(i,j,1,rk)
-	xmt=uc(i,j,2,rk)
-	ymt=uc(i,j,3,rk)
-	eng=uc(i,j,4,rk)
-	t0=1./den
-	vex=xmt*t0
-	vey=ymt*t0
-	pre=gm1*(eng-0.5*den*(vex*vex+vey*vey))
+      den=uc(i,j,1,rk)
+      xmt=uc(i,j,2,rk)
+      ymt=uc(i,j,3,rk)
+      eng=uc(i,j,4,rk)
+      t0=1./den
+      vex=xmt*t0
+      vey=ymt*t0
+      pre=gm1*(eng-0.5*den*(vex*vex+vey*vey))
       
-c	write(*,*) 'i=',i
+c      write(*,*) 'i=',i
 c     write(*,*) 'pressure=', pre 
- 	ar =sqrt(gamma*pre/den)    
+       ar =sqrt(gamma*pre/den)    
 c     
 c    write(*,*) 'xmt',xmt
       f(i,1)=xmt
- 	f(i,2)=vex*xmt+pre
- 	f(i,3)=vex*ymt
- 	f(i,4)=vex*(pre+eng)
+       f(i,2)=vex*xmt+pre
+       f(i,3)=vex*ymt
+       f(i,4)=vex*(pre+eng)
 
- 	uu(i,1)=den
- 	uu(i,2)=xmt
- 	uu(i,3)=ymt
- 	uu(i,4)=eng
+       uu(i,1)=den
+       uu(i,2)=xmt
+       uu(i,3)=ymt
+       uu(i,4)=eng
       
-c	write(*,*)'i=',i,'density=',den
+c      write(*,*)'i=',i,'density=',den
 c
-	w(i)=sqrt(abs(den))
+      w(i)=sqrt(abs(den))
       h(i)=(pre+eng)*t0
-	vx(i)=vex
-	vy(i)=vey
+      vx(i)=vex
+      vy(i)=vey
 
-	am(1)=max(am(1), abs(vex-ar))
-	am(2)=max(am(2), abs(vex))
-	am(3)=max(am(3), abs(vex))
-	am(4)=max(am(4), abs(vex+ar))
+      am(1)=max(am(1), abs(vex-ar))
+      am(2)=max(am(2), abs(vex))
+      am(3)=max(am(3), abs(vex))
+      am(4)=max(am(4), abs(vex+ar))
 
-	enddo
+      enddo
 
-	am(1)=1.0*am(1)
-	am(2)=1.0*am(2)
- 	am(3)=1.0*am(3)
-	am(4)=1.0*am(4)
+      am(1)=1.0*am(1)
+      am(2)=1.0*am(2)
+       am(3)=1.0*am(3)
+      am(4)=1.0*am(4)
 
-	em=max( em, max(am(1),am(4)))
+      em=max( em, max(am(1),am(4)))
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c  compute the left and right eigenvectors of roe's mean matrix.
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc      
-	do i=-1,nx
+      do i=-1,nx
 
-		t0 = w(i) / ( w(i) + w(i+1) )
+            t0 = w(i) / ( w(i) + w(i+1) )
             t1 = 1. - t0
           vxm = t0 * vx(i) + t1 * vx(i+1)
           vym = t0 * vy(i) + t1 * vy(i+1)
@@ -126,87 +126,87 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 c     use weno scheme to compute f(i+1/2) and f(i-1/2) 
 
-	call weno_lf(nx)
+      call weno_lf(nx)
 c
  
       do m=1,nq
-	 do i=0,nx
-	 rhs(i,j,m)=(fh(i-1,m)-fh(i,m))*cdx
-	 enddo
-	enddo
+       do i=0,nx
+       rhs(i,j,m)=(fh(i-1,m)-fh(i,m))*cdx
+       enddo
+      enddo
  
 c      write(*,*) 'j=',j    
       enddo
 c-----end loop of y-dir----------------------------
       return
-	end
+      end
 
 
 c
-	subroutine gy(rk,uc)
+      subroutine gy(rk,uc)
       include "common.h"
-	include "para.h"
+      include "para.h"
 c---------
 c      flux g.
-c---------	
-	dimension w(-md:nym),vx(-md:nym),vy(-md:nym),
+c---------      
+      dimension w(-md:nym),vx(-md:nym),vy(-md:nym),
      & h(-md:nym)
-     	dimension uc(-md:nxm,-md:nym,4,0:4)
-c	real*8  evr(-1:ny,4,4),evl(-1:ny,4,4)
-	integer rk,i,j
+           dimension uc(-md:nxm,-md:nym,4,0:4)
+c      real*8  evr(-1:ny,4,4),evl(-1:ny,4,4)
+      integer rk,i,j
  
 c--------start loop of x-dir----------------      
-	do 200 i=0,nx
+      do 200 i=0,nx
       
-	am(1)=1.e-15
-	am(2)=1.e-15
-	am(3)=1.e-15
-	am(4)=1.e-15
+      am(1)=1.e-15
+      am(2)=1.e-15
+      am(3)=1.e-15
+      am(4)=1.e-15
 
-	do 201 j=-md,nym
+      do 201 j=-md,nym
       den=uc(i,j,1,rk)
-	xmt=uc(i,j,2,rk)
-	ymt=uc(i,j,3,rk)
-	eng=uc(i,j,4,rk)
+      xmt=uc(i,j,2,rk)
+      ymt=uc(i,j,3,rk)
+      eng=uc(i,j,4,rk)
       
-c	if(den .eq. 0) then
-c	write(*,*) 'i=',i
-c	endif
+c      if(den .eq. 0) then
+c      write(*,*) 'i=',i
+c      endif
 
- 	t0=1./den
+       t0=1./den
 c
-	vex=xmt*t0
-	vey=ymt*t0
-	pre=gm1*(eng-0.5*den*(vex*vex+vey*vey))
-	pre=abs(pre)
+      vex=xmt*t0
+      vey=ymt*t0
+      pre=gm1*(eng-0.5*den*(vex*vex+vey*vey))
+      pre=abs(pre)
       ar=sqrt(gamma*pre*t0)
       
-	uu(j,1)=den
-	uu(j,2)=xmt
-	uu(j,3)=ymt
-	uu(j,4)=eng
+      uu(j,1)=den
+      uu(j,2)=xmt
+      uu(j,3)=ymt
+      uu(j,4)=eng
 
-	f(j,1)=ymt
-	f(j,2)=vey*xmt
-	f(j,3)=vey*ymt+pre
-	f(j,4)=vey*(pre+eng)
+      f(j,1)=ymt
+      f(j,2)=vey*xmt
+      f(j,3)=vey*ymt+pre
+      f(j,4)=vey*(pre+eng)
       
-	den=abs(den)
-	w(j)=sqrt(den)
-	h(j)=(pre+eng)*t0
-	vx(j)=vex
-	vy(j)=vey
-	am(1)=max(am(1),abs(vey-ar))
-	am(2)=max(am(2),abs(vey))
-	am(3)=max(am(3),abs(vey))
-	am(4)=max(am(4),abs(vey+ar))
+      den=abs(den)
+      w(j)=sqrt(den)
+      h(j)=(pre+eng)*t0
+      vx(j)=vex
+      vy(j)=vey
+      am(1)=max(am(1),abs(vey-ar))
+      am(2)=max(am(2),abs(vey))
+      am(3)=max(am(3),abs(vey))
+      am(4)=max(am(4),abs(vey+ar))
   201 continue
 c
 c     a small trick 
 c      am(1)=am(1)*1.1
-c 	am(2)=am(2)*1.1
-c  	am(3)=am(3)*1.1
-c 	am(4)=am(4)*1.1
+c       am(2)=am(2)*1.1
+c        am(3)=am(3)*1.1
+c       am(4)=am(4)*1.1
 
 c      em=max(em,max(am(1),am(4)))
 c
@@ -262,14 +262,14 @@ c     compute the left and right eigenvectors of roe's mean matrix.
           evl(j,4,4) = t2
   202 continue
       
-	call weno_lf(ny)
+      call weno_lf(ny)
       
-	do m=1,nq
-	do j=0,ny
-	rhs(i,j,m)=rhs(i,j,m)+(fh(j-1,m)-fh(j,m))*cdy
-	enddo
-	enddo     
+      do m=1,nq
+      do j=0,ny
+      rhs(i,j,m)=rhs(i,j,m)+(fh(j-1,m)-fh(j,m))*cdy
+      enddo
+      enddo     
   200 continue
 c---------end loop ----------------
       return
-	end
+      end

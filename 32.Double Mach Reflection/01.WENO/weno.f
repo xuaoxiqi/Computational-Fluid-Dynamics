@@ -1,14 +1,14 @@
       
       subroutine weno_lf(ns)
-	include "common.h"
-	include "para.h"
+      include "common.h"
+      include "para.h"
 ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c     this routine is used to construct weno scheme. 
 c     5-th order weno scheme
 c     use local characteristic decomposition.
 c         lax-friedriches flux splitting technique.
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc      
-	integer ns,i,j
+      integer ns,i,j
       integer nsm
 c    f: inviscid flux 
 c       f(u) or g(u)
@@ -20,32 +20,32 @@ c   fh: flux at half nodes.
 
 c     local variables:
       dimension ff(-md:ns+md,nq)
-	dimension gg(-md:ns+md,nq,2)
-	dimension hh(-md:ns+md,nq,2)
-	dimension df(-md:ns+md,nq)
-	dimension du(-md:ns+md,nq)
+      dimension gg(-md:ns+md,nq,2)
+      dimension hh(-md:ns+md,nq,2)
+      dimension df(-md:ns+md,nq)
+      dimension du(-md:ns+md,nq)
         double precision :: tau5
 c
-	nsm=ns+md-1
+      nsm=ns+md-1
 
 c   compute the difference of variables & flux
       do m=1,nq
-	do i=-md,nsm-1
-	  df(i,m)=f(i+1,m)-f(i,m)
-	  du(i,m)=uu(i+1,m)-uu(i,m)
-	enddo
-	enddo
+      do i=-md,nsm-1
+        df(i,m)=f(i+1,m)-f(i,m)
+        du(i,m)=uu(i+1,m)-uu(i,m)
+      enddo
+      enddo
 
 c------------loop over in " m" characteristic field-------------------
       do 100 m=1 ,nq
 c
 c       *  use lax-friedriches method to split the fluxes.
       do m1=1,nq
-	do i=-md,nsm-1
-	gg(i,m1,1)=0.5*(df(i,m1)+am(m)*du(i,m1))
+      do i=-md,nsm-1
+      gg(i,m1,1)=0.5*(df(i,m1)+am(m)*du(i,m1))
       gg(i,m1,2)=gg(i,m1,1)-df(i,m1)
-	enddo
-	enddo
+      enddo
+      enddo
  
 c
 c    /*   fifth order */
@@ -53,15 +53,15 @@ c    /*   fifth order */
 c    project the positive and negative part part of the fluxes the
 c      'm' th charactersitic field.
       
-	do m1=1,nq
-	k0=m1-3
-	k1=3-m1
-	do i=-1,ns
+      do m1=1,nq
+      k0=m1-3
+      k1=3-m1
+      do i=-1,ns
           hh(i,m1,1) = evl(i,m,1)*gg(i+k0,1,1) + evl(i,m,2)*gg(i+k0,2,1)
      &               + evl(i,m,3)*gg(i+k0,3,1) + evl(i,m,4)*gg(i+k0,4,1)
           hh(i,m1,2) = evl(i,m,1)*gg(i+k1,1,2) + evl(i,m,2)*gg(i+k1,2,2)
      &               + evl(i,m,3)*gg(i+k1,3,2) + evl(i,m,4)*gg(i+k1,4,2)
-	enddo
+      enddo
       enddo
 
 c* compute the weights and approximate the fluxes
@@ -116,4 +116,4 @@ c project the fluxes to the physical space.
       enddo
 
       return
-	end
+      end
