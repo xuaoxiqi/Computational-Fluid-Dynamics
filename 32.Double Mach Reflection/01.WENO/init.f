@@ -5,16 +5,16 @@ c
       include "common.h"
       include "para.h"
 
-      me=1    !Equation type: 1->Euler;
-      mt=4    !Order in time
+      me=1    !Equation type: 1->Euler; else->Navier Stokes
+      mt=4    !Order in time: 3 OR 4
       nxm=nx+md
       nym=ny+md
       cfl=0.05d0
-      tend=0.20
+      tend=0.20d0
      
       write(*,*) '************************'
       write(*,*) 'Double Mach Reflection Problem'
-      write(*,*) 'Order in time',mt
+      write(*,*) mt,'th order in time'
       if( me.eq.1) then
           write(*,*) 'Euler Equation'
       else
@@ -24,7 +24,7 @@ c
       write(*,*) 'cfl=',cfl
       write(*,*) '*************************'
 c
-c
+
       return
       end subroutine setup
 
@@ -58,13 +58,14 @@ c     nodes information
           enddo
       enddo
 
+      !V2=V1 +/- a*[2/(gamma+1)(Ms-1/Ms)]
       vx= 8.25d0*SQRT(3.0d0)/2.0d0
       vy=-8.25d0*0.5d0
       
-      prel=116.5d0
+      prel=116.5d0 !P2=P1*[1+2*gamma/(gamma+1)*(Ms*Ms-1)]
       prer=1.0d0
 
-      rhol=7.9996d0
+      rhol=8.0d0 !rho2=rho1*(Ms*Ms)/[1+(gamma-1)/(1+gamma+1)*(Ms*Ms-1)]
       rhor=1.4d0
        
       x0=1.0d0/6.0d0
@@ -75,7 +76,6 @@ c... initialize the condition.
             x=r(i,j,1)
             y=r(i,j,2)
          
-c         xcut=x0+y*(1./3)**(0.5)
             xcut =x0+y*1./sqrt(3.)
             if(x.le.xcut) then
                 u(i,j,1)=rhol

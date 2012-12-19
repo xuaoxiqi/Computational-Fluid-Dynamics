@@ -23,7 +23,7 @@
 
        program main
        implicit none
-       integer, parameter :: N=1000
+       integer, parameter :: N=100
        integer :: i, itert, itc
        real(8), parameter :: gamma=1.4d0, R=287.14d0
        real(8) :: X(0:N+2), p(0:N+2), a(0:N+2), u(0:N+2), u1(0:N+2), u2(0:N+2), u3(0:N+2), f1(0:N+1), f2(0:N+1), f3(0:N+1)

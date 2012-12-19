@@ -60,7 +60,7 @@ C     Initial data and parameters are read in
 *
       DOMLEN = 1.0d0         ! DOMLEN : Domain length(Sod test problem)
       DIAPH1 = 0.5d0         ! DIAPH1 : Position of diaphragm
-      CELLS = 1000        ! CELLS  : Number of cells in evaluating exact solution
+      CELLS = 100        ! CELLS  : Number of cells in evaluating exact solution
       GAMMA = 1.4d0         ! GAMMA  : Ratio of specific heats
       TIMEOU = 0.25d0        ! TIMEOU : Output time
       DL = 1.0d0         ! DL     : Initial density  on left  section of tube

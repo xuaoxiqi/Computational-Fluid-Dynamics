@@ -27,7 +27,6 @@ c     /* initialization */
 
       write(*,*) 'initial delta t=',delt
 
- 
       do    
           call bc(rk,qc)
           call fx(rk,qc)
@@ -35,7 +34,6 @@ c     /* initialization */
           call rkt(rk,qc)
 
           rk=mod(rk+1,mt)
-
 
           if(rk.eq.0) then
               time=time+delt

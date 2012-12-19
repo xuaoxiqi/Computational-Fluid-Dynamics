@@ -2,7 +2,6 @@ c-------------------------------------------------
 c      output the final solutions.
 c
 c-------------------------------------------------
-ccccccccccccccccccccccccc
 
       subroutine output(uc,r,rk)
       include "para.h"

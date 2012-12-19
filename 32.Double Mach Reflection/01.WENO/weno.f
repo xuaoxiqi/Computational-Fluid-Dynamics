@@ -6,17 +6,16 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c     this routine is used to construct weno scheme. 
 c     5-th order weno scheme
 c     use local characteristic decomposition.
-c         lax-friedriches flux splitting technique.
+c     Lax-Friedrichs Flux Splitting
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc      
       integer ns,i,j
       integer nsm
-c    f: inviscid flux 
-c       f(u) or g(u)
-c    u: the conserved variables.
-c  evl: left eig-vector
-c  evr: right eig-vector
-c   fh: flux at half nodes.
-*
+c     f: inviscid flux 
+c     f(u) or g(u)
+c     u: conserved variables
+c     evl: left eigenvector
+c     evr: right eigenvector
+c     fh: flux at half nodes.
 
 c     local variables:
       dimension ff(-md:ns+md,nq)
@@ -24,7 +23,7 @@ c     local variables:
       dimension hh(-md:ns+md,nq,2)
       dimension df(-md:ns+md,nq)
       dimension du(-md:ns+md,nq)
-        double precision :: tau5
+      double precision :: tau5
 c
       nsm=ns+md-1
 
@@ -38,8 +37,7 @@ c   compute the difference of variables & flux
 
 c------------loop over in " m" characteristic field-------------------
       do 100 m=1 ,nq
-c
-c       *  use lax-friedriches method to split the fluxes.
+c         Lax-Friedrichs Flux Splitting
       do m1=1,nq
       do i=-md,nsm-1
       gg(i,m1,1)=0.5*(df(i,m1)+am(m)*du(i,m1))
@@ -47,7 +45,6 @@ c       *  use lax-friedriches method to split the fluxes.
       enddo
       enddo
  
-c
 c    /*   fifth order */
 
 c    project the positive and negative part part of the fluxes the
@@ -64,7 +61,7 @@ c      'm' th charactersitic field.
       enddo
       enddo
 
-c* compute the weights and approximate the fluxes
+c  compute the weights and approximate the fluxes
 
       do i = -1, ns
          ff(i,m) = 0.0
@@ -105,8 +102,7 @@ c
 c------------ end loop------------------------------------------------
 
 c project the fluxes to the physical space.
-
-      
+  
       do m =  1, nq
       do i = -1, ns
          fh(i,m) =evr(i,m,1) * ff(i,1) + evr(i,m,2) * ff(i,2)
