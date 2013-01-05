@@ -1,6 +1,6 @@
 # Computational Fluid Dynamics
 
-## Codes List
+## Code List
 
 ### Quasi 1D Nozzle Flow
 
@@ -33,6 +33,7 @@
 
 * Lid Driven Cavity Flow
 * Tube Flow with Body Force
+* Tube Flow with Non-Equilibrium B.C.
 
 ## Licence
 

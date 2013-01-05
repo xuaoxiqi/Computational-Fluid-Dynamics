@@ -8,9 +8,9 @@
 !!!                        Stationary Wall
 !!!               |------------------------------|
 !!!               |                              |
-!!!               |                              |  Periodic Boundary
+!!!               |                              |  Pressure Boundary
 !!!               |                              |
-!!!               |                              |  driven by body force
+!!!               |                              |  non-equilibrium
 !!!               |                              |
 !!!               |                              |
 !!!               |------------------------------|
@@ -19,10 +19,9 @@
 
         program main
         implicit none
-        integer, parameter :: N=41,M=21
+        integer, parameter :: N=81,M=41
         integer :: i, j, itc, itc_max, k
         real(8) :: cs2, dx, dy, dt, tau
-        real(8) :: g
         real(8) :: eps, error
         real(8) :: X(N), Y(M), u(N,M), v(N,M), up(N,M), vp(N,M), rho(N,M), p(N,M), psi(N,M)
         real(8) :: omega(0:8), f(0:8,N,M), un(0:8)
@@ -43,7 +42,6 @@
         dy = 1.0d0/float(M-1)
         dt = dx
         tau = 1.0d0
-        g = 1e-4
         itc = 0
         itc_max = 1e5
         eps = 1e-5
@@ -62,7 +60,7 @@
             call bounceback(N,M,f)
 
 !!! collision step
-            call collision(N,M,u,v,ex,ey,rho,f,omega,cs2,tau,g)
+            call collision(N,M,u,v,ex,ey,rho,f,omega,cs2,tau)
 
 !!! check convergence
             call check(N,M,u,v,up,vp,itc,error)
@@ -90,7 +88,7 @@
         write(*,*)
         write(*,*) '************************************************************'
         write(*,*) 'This program sloves Tube Flow problem using Lattice Boltzmann Method'
-        write(*,*) 'Driven by Body Force'
+        write(*,*) 'non-equilibrium for inlet-outlet pressure boundary condition'
         write(*,*) 'N =',N,',       M =',M
         write(*,*) 'eps =',eps
         write(*,*) 'itc =',itc
@@ -131,6 +129,10 @@
         u = 0.0d0
         v = 0.0d0
         rho = 1.0d0
+        do j=1,N
+            rho(1,j) = 1.005
+            rho(N,j) = 0.995
+        enddo
 
         do i=1,N
             do j=1,M
@@ -201,7 +203,7 @@
         end subroutine streaming
 
 !!! collision step
-        subroutine collision(N,M,u,v,ex,ey,rho,f,omega,cs2,tau,g)
+        subroutine collision(N,M,u,v,ex,ey,rho,f,omega,cs2,tau)
         implicit none
         integer :: N, M, i, j
         integer :: alpha
@@ -209,7 +211,6 @@
         real(8) :: us2
         real(8) :: u(N,M), v(N,M), ex(0:8), ey(0:8), rho(N,M), f(0:8,N,M), omega(0:8)
         real(8) :: un(0:8), feq(0:8,N,M)
-        real(8) :: g
 
         do i=1,N
             do j=1,M
@@ -218,17 +219,24 @@
                     do alpha=0,8
                         rho(i,j) = rho(i,j)+f(alpha,i,j)
                     enddo
+                    if(i.EQ.1) rho(i,j) = 1.005
+                    if(i.EQ.N) rho(i,j) = 0.995
 
                     !data ex/0.0d0,1.0d0,0.0d0, -1.0d0, 0.0d0, 1.0d0, -1.0d0, -1.0d0, 1.0d0/
                     !data ey/0.0d0,0.0d0,1.0d0, 0.0d0, -1.0d0, 1.0d0, 1.0d0, -1.0d0, -1.0d0/
                     u(i,j) = (f(1,i,j)-f(3,i,j)+f(5,i,j)-f(6,i,j)-f(7,i,j)+f(8,i,j))/rho(i,j)
                     v(i,j) = (f(2,i,j)-f(4,i,j)+f(5,i,j)+f(6,i,j)-f(7,i,j)-f(8,i,j))/rho(i,j)
+
                     us2 = u(i,j)*u(i,j)+v(i,j)*v(i,j)
                     do alpha=0,8
                         un(alpha) = u(i,j)*ex(alpha) + v(i,j)*ey(alpha)
                         feq(alpha,i,j) = omega(alpha)*rho(i,j) &
                                        *(1.0d0+un(alpha)/cs2+un(alpha)*un(alpha)/(2.0d0*cs2*cs2)-us2/(2.0d0*cs2))
-                        f(alpha,i,j) = f(alpha,i,j)-1.0d0/tau*(f(alpha,i,j)-feq(alpha,i,j))+omega(alpha)*ex(alpha)*g/cs2
+
+                        f(alpha,i,j) = f(alpha,i,j)-1.0d0/tau*(f(alpha,i,j)-feq(alpha,i,j))
+                        if(i.EQ.1) f(alpha,i,j) = feq(alpha,i,j)+(1.0d0-1.0d0/tau)*(f(alpha,i+1,j)-feq(alpha,i+1,j))
+                        if(i.EQ.N) f(alpha,i,j) = feq(alpha,i,j)+(1.0d0-1.0d0/tau)*(f(alpha,i-1,j)-feq(alpha,i-1,j))
+
                     enddo
             enddo
         enddo
@@ -258,7 +266,7 @@
         integer :: N, M, i, j
         real(8) :: f(0:8,N,M)
 
-        do i=2,N-1
+        do i=1,N
 
             !Bottom side
             f(2,i,1) = f(4,i,1)
@@ -270,17 +278,6 @@
             f(7,i,M) = f(5,i,M)
             f(8,i,M) = f(6,i,M)
 
-        enddo
-
-        !Periodic boundary conditon
-        do j=1,M
-            f(1,1,j) = f(1,N,j)
-            f(5,1,j) = f(5,N,j)
-            f(8,1,j) = f(8,N,j)
-
-            f(3,N,j) = f(3,1,j)
-            f(6,N,j) = f(6,1,j)
-            f(7,N,j) = f(7,1,j)
         enddo
 
 
@@ -333,7 +330,7 @@
         real(8) :: rho(N,M), p(N,M)
 
         do i=1,N
-            do j=1,M-1
+            do j=1,M
                 p(i,j) = rho(i,j)*cs2
             enddo
         enddo

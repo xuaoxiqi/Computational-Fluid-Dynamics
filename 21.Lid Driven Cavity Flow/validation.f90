@@ -7,9 +7,6 @@
         implicit none
         integer, parameter :: N=129, M=129
         integer :: i, j
-        integer :: mid_x, mid_y
-        real(8) :: dx, dy
-        real(8) :: psi_mid, u_max, v_max, u_max_loc , v_max_loc
         real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M), p(N,M)
 
         open(unit=01,file='./0041cavity.dat',status='old')

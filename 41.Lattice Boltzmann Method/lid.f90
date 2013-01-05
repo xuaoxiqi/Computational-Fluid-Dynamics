@@ -60,11 +60,11 @@
 !!! streaming step
             call streaming(N,M,f)
 
-!!! collision step
-            call collision(N,M,u,v,ex,ey,rho,f,omega,cs2,tau)
-
 !!! boundary condition
             call bounceback(N,M,f)
+
+!!! collision step
+            call collision(N,M,u,v,ex,ey,rho,f,omega,cs2,tau)
 
 !!! check convergence
             call check(N,M,u,v,up,vp,itc,error)
@@ -218,14 +218,17 @@
 
         do i=1,N
             do j=1,M-1
+
                     rho(i,j) = 0.0d0
                     do alpha=0,8
                         rho(i,j) = rho(i,j)+f(alpha,i,j)
                     enddo
+
                     !data ex/0.0d0,1.0d0,0.0d0, -1.0d0, 0.0d0, 1.0d0, -1.0d0, -1.0d0, 1.0d0/
                     !data ey/0.0d0,0.0d0,1.0d0, 0.0d0, -1.0d0, 1.0d0, 1.0d0, -1.0d0, -1.0d0/
                     u(i,j) = (f(1,i,j)-f(3,i,j)+f(5,i,j)-f(6,i,j)-f(7,i,j)+f(8,i,j))/rho(i,j)
                     v(i,j) = (f(2,i,j)-f(4,i,j)+f(5,i,j)+f(6,i,j)-f(7,i,j)-f(8,i,j))/rho(i,j)
+
                     us2 = u(i,j)*u(i,j)+v(i,j)*v(i,j)
                     do alpha=0,8
                         un(alpha) = u(i,j)*ex(alpha) + v(i,j)*ey(alpha)
@@ -234,18 +237,16 @@
                         f(alpha,i,j) = f(alpha,i,j)-1.0d0/tau*(f(alpha,i,j)-feq(alpha,i,j))
                     enddo
 
-                    if((i.EQ.1).AND.(j.EQ.1)) then
-                        f(6,i,j) = feq(6,i,j)
-                        f(8,i,j) = feq(8,i,j)
-                    endif
-
-                    if((i.EQ.N).AND.(j.EQ.1)) then
-                        f(5,i,j) = feq(5,i,j)
-                        f(7,i,j) = feq(7,i,j)
-                    endif
-
             enddo
         enddo
+
+        !Left bottom corner
+        f(6,1,1) = feq(6,1,1)
+        f(8,1,1) = feq(8,1,1)
+
+        !Right bottom corner
+        f(5,N,1) = feq(5,N,1)
+        f(7,N,1) = feq(7,N,1)
 
         return
         end subroutine collision
