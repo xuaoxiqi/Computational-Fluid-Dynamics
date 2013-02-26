@@ -19,14 +19,14 @@
 
         program main
         implicit none
-        integer, parameter :: N=17,M=17
+        integer, parameter :: N=5,M=5
         integer :: i, j, itc, itc_max, k
         integer :: mid_x, mid_y
-        real(8) :: c, cs2, dx, dy, tau, nu
-        real(8) :: g
+        real(8) :: c, dx, dy, tau,  dt, nu
+        real(8) :: F_body
         real(8) :: eps, error
-        real(8) :: X(N), Y(M), u(N,M), v(N,M), up(N,M), vp(N,M), rho(N,M), p(N,M), psi(N,M)
-        real(8) :: omega(0:8), f(0:8,N,M), un(0:8)
+        real(8) :: X(N), Y(M), u(N,M), v(N,M), up(N,M), vp(N,M), rho(N,M), p(N,M)
+        real(8) :: omega(0:8), f(0:8,N,M), un(0:8),gx(0:8)
         real(8) :: ex(0:8), ey(0:8)
         character (len=100):: filename
         data ex/0.0d0,1.0d0,0.0d0, -1.0d0, 0.0d0, 1.0d0, -1.0d0, -1.0d0, 1.0d0/
@@ -40,30 +40,38 @@
 !!!              7   4   8
 
 !!! input initial data
+
         dx = 1.0d0/float(N-1)
         dy = 1.0d0/float(M-1)
 
-        tau = 10.0d0
-        nu = 0.5d0
-        c = 3.0*nu/dx/(tau-0.5d0)
-        cs2 = 1.0d0/3.0d0*c*c
-
-        g = 1e-3
+        tau = 3.0d0
+        nu = 0.01d0
+        dt = (2.0d0*tau-1.0d0)*dx*dx/6.0d0/nu
+        c = dx/dt
 
         ex = c*ex
         ey = c*ey
-        nu = c*dx*(tau-0.5d0)/3.0d0
+
+        F_body = 1e-3
+        gx(0) = 0.0d0
+        do i=1,4
+            gx(i) = 1.0d0/3.0d0/c*ex(i)*F_body
+        enddo
+        do i=5,6
+            gx(i) = 1.0d0/12.0d0/c*ex(i)*F_body
+        enddo
+
         itc = 0
-        itc_max = 3000
+        itc_max = 10000
         eps = 1e-6
         k = 0
         error = 100.0d0
 
 !!! set up initial flow field
-        call initial(N,M,dx,dy,X,Y,u,v,rho,psi,cs2,omega,ex,ey,un,f)
+        call initial(N,M,dx,dy,X,Y,u,v,rho,c,omega,ex,ey,un,f)
 
         !do while((error.GT.eps).AND.(itc.LT.itc_max))
-        do while(itc.Lt.itc_max)
+        do while(itc.LT.itc_max)
 
 !!! streaming step
             call streaming(N,M,f)
@@ -72,14 +80,14 @@
             call bounceback(N,M,f)
 
 !!! collision step
-            call collision(N,M,u,v,ex,ey,rho,f,omega,cs2,tau,g)
+            call collision(N,M,u,v,ex,ey,rho,f,omega,c,tau,gx,dx,dt)
 
 !!! check convergence
             call check(N,M,u,v,up,vp,itc,error)
 
 !!! output preliminary results
-            if(MOD(itc,1000).EQ.0) then
-                call calp(N,M,cs2,rho,p)
+            if(MOD(itc,10000).EQ.0) then
+                call calp(N,M,c,rho,p)
                 k = k+1
                 call output(N,M,X,Y,up,vp,p,k)
             endif
@@ -87,16 +95,13 @@
         enddo
 
 !!! compute pressure field
-        call calp(N,M,cs2,rho,p)
-
-!!! compute streamfunction
-       ! call calpsi(N,M,dx,dy,up,vp,psi)
+        call calp(N,M,c,rho,p)
 
 !!! output data file
         k = k+1
         call output(N,M,X,Y,up,vp,p,k)
 
-        write(filename,*) int(tau)
+        write(filename,*) tau
         filename = adjustl(filename)
 
         open(unit=02,file='u-y_tau'//trim(filename)//'.dat',status='unknown')
@@ -112,42 +117,35 @@
         enddo
 
         write(*,*)
+        write(*,*) '************************************************************'
+	write(*,*) 'nu=',nu
         write(*,*) 'tau=',tau
         write(*,*) 'c=',c
         write(*,*) 'u(mid_x,mid_y)', up(mid_x,mid_y)
+        write(*,*) '************************************************************'
         write(*,*)
 
 100     format(2x,10(e12.6,'      '))
-101     format('Title="Lid Driven Cavity Flow"')
+101     format('Title="Poiseuille Flow"')
 202     format('Variables=U,Y')
 203     format('zone',1x,'i=',1x,i5,2x,'f=point')
 
         close(02)
 
-        write(*,*)
-        write(*,*) '************************************************************'
-        write(*,*) 'This program sloves Tube Flow problem using Lattice Boltzmann Method'
-        write(*,*) 'Driven by Body Force'
-        write(*,*) 'N =',N,',       M =',M
-        write(*,*) 'nu=',nu
-        write(*,*) 'eps =',eps
-        write(*,*) 'itc =',itc
-        write(*,*) '************************************************************'
-        write(*,*)
-
         stop
         end program main
 
 !!! set up initial flow field
-        subroutine initial(N,M,dx,dy,X,Y,u,v,rho,psi,cs2,omega,ex,ey,un,f)
+        subroutine initial(N,M,dx,dy,X,Y,u,v,rho,c,omega,ex,ey,un,f)
         implicit none
         integer :: N, M, i, j
         integer :: alpha
         real(8) :: dx, dy
-        real(8) :: cs2, us2
+        real(8) :: c, us2
         real(8) :: X(N), Y(M)
-        real(8) :: omega(0:8), u(N,M), v(N,M), rho(N,M), psi(N,M), ex(0:8), ey(0:8), un(0:8)
+        real(8) :: omega(0:8), u(N,M), v(N,M), rho(N,M), ex(0:8), ey(0:8), un(0:8)
         real(8) :: f(0:8,N,M)
+
 
         do i=1,N
             X(i) = (i-1)*dx
@@ -155,7 +153,6 @@
         do j=1,M
             Y(j) = (j-1)*dy
         enddo
-        psi = 0.0d0
 
         omega(0) = 4.0d0/9.0d0
         do alpha=1,4
@@ -175,7 +172,8 @@
                 us2 = u(i,j)*u(i,j)+v(i,j)*v(i,j)
                 do alpha=0,8
                     un(alpha) = u(i,j)*ex(alpha)+v(i,j)*ey(alpha)
-                    f(alpha,i,j) = omega(alpha)*(1.0d0+un(alpha)/cs2+un(alpha)*un(alpha)/(2.0d0*cs2*cs2)-us2/(2.0d0*cs2))
+                    f(alpha,i,j) = omega(alpha) &
+                    *(1.0d0+3.0d0*un(alpha)/c/c+9.0d0*un(alpha)*un(alpha)/2.0d0/c/c/c/c-3.0d0*us2/2.0d0/c/c)
                 enddo
             enddo
         enddo
@@ -277,15 +275,16 @@
         end subroutine bounceback
 
 !!! collision step
-        subroutine collision(N,M,u,v,ex,ey,rho,f,omega,cs2,tau,g)
+        subroutine collision(N,M,u,v,ex,ey,rho,f,omega,c,tau,gx,dx,dt)
         implicit none
         integer :: N, M, i, j
         integer :: alpha
-        real(8) :: cs2, tau
+        real(8) :: dx, dt
+        real(8) :: c, tau
         real(8) :: us2
         real(8) :: u(N,M), v(N,M), ex(0:8), ey(0:8), rho(N,M), f(0:8,N,M), omega(0:8)
         real(8) :: un(0:8), feq(0:8,N,M)
-        real(8) :: g
+        real(8) :: gx(0:8)
 
         do i=1,N
             do j=1,M
@@ -297,14 +296,14 @@
 
                     !data ex/0.0d0,1.0d0,0.0d0, -1.0d0, 0.0d0, 1.0d0, -1.0d0, -1.0d0, 1.0d0/
                     !data ey/0.0d0,0.0d0,1.0d0, 0.0d0, -1.0d0, 1.0d0, 1.0d0, -1.0d0, -1.0d0/
-                    u(i,j) = (f(1,i,j)-f(3,i,j)+f(5,i,j)-f(6,i,j)-f(7,i,j)+f(8,i,j))/rho(i,j)
-                    v(i,j) = (f(2,i,j)-f(4,i,j)+f(5,i,j)+f(6,i,j)-f(7,i,j)-f(8,i,j))/rho(i,j)
+                    u(i,j) = c*(f(1,i,j)-f(3,i,j)+f(5,i,j)-f(6,i,j)-f(7,i,j)+f(8,i,j))/rho(i,j)
+                    v(i,j) = c*(f(2,i,j)-f(4,i,j)+f(5,i,j)+f(6,i,j)-f(7,i,j)-f(8,i,j))/rho(i,j)
                     us2 = u(i,j)*u(i,j)+v(i,j)*v(i,j)
                     do alpha=0,8
                         un(alpha) = u(i,j)*ex(alpha) + v(i,j)*ey(alpha)
                         feq(alpha,i,j) = omega(alpha)*rho(i,j) &
-                                       *(1.0d0+un(alpha)/cs2+un(alpha)*un(alpha)/(2.0d0*cs2*cs2)-us2/(2.0d0*cs2))
-                        f(alpha,i,j) = f(alpha,i,j)-1.0d0/tau*(f(alpha,i,j)-feq(alpha,i,j))+omega(alpha)*ex(alpha)*g/cs2
+                                *(1.0d0+3.0d0*un(alpha)/c/c+9.0d0*un(alpha)*un(alpha)/2.0d0/c/c/c/c-3.0d0*us2/2.0d0/c/c)
+                        f(alpha,i,j) = f(alpha,i,j)-1.0d0/tau*(f(alpha,i,j)-feq(alpha,i,j))+gx(alpha)*dt*dt/dx
                     enddo
             enddo
         enddo
@@ -368,15 +367,15 @@
         end subroutine check
 
 !!! compute pressure field
-        subroutine calp(N,M,cs2,rho,p)
+        subroutine calp(N,M,c,rho,p)
         implicit none
         integer :: N, M, i, j
-        real(8) :: cs2
+        real(8) :: c
         real(8) :: rho(N,M), p(N,M)
 
         do i=1,N
             do j=1,M
-                p(i,j) = rho(i,j)*cs2
+                p(i,j) = rho(i,j)*c*c/3.0d0
             enddo
         enddo
 
@@ -405,7 +404,7 @@
         enddo
 
 100     format(2x,10(e12.6,'      '))
-101     format('Title="Tube Flow"')
+101     format('Title="Poiseuille Flow"')
 102     format('Variables=x,y,u,v')
 103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
 

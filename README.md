@@ -32,8 +32,7 @@
 ###Lattice Boltzmann Method
 
 * Lid Driven Cavity Flow
-* Tube Flow with Body Force
-* Tube Flow with Non-Equilibrium B.C.
+* Poiseuille Flow 
 
 ## Licence
 
