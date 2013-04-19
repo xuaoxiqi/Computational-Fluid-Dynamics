@@ -38,7 +38,7 @@
 
 These are free CFD codes, and they are intended for an educational use only.
 
-Copyright (C) 2012  Ao Xu
+Copyright (C) 2012-2013 Ao Xu
     
 This work is licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License. To view a copy of this license, visit [http://creativecommons.org/licenses/by-nc/3.0/](http://creativecommons.org/licenses/by-nc/3.0/) or send a letter to Creative Commons, 444 Castro Street, Suite 900, Mountain View, California, 94041, USA.
 

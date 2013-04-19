@@ -13,7 +13,7 @@
         real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M), T(N,M)
         real(8) :: Nu(N)
 
-        open(unit=01,file='./1104cavity.dat',status='old')
+        open(unit=01,file='./v4cavity.dat',status='old')
         read(01,*)
         read(01,*)
         read(01,*)
@@ -27,7 +27,7 @@
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
 
-        open(unit=03,file='results.txt',status='unknown')
+        open(unit=03,file='v4.txt',status='unknown')
 
         call validation(N,M,dx,dy,u,v,psi,T)
 

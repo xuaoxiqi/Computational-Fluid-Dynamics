@@ -23,16 +23,15 @@
         real(8) :: X(N), Y(M), u(N,M), v(N,M), vor(N,M), RVOR(N,M), psi(N,M), Rpsi(N,M), T(N,M)
 
 !!! input initial data
-        Pr = 0.71d0
+        Pr = 0.7d0
         Ra = 1e4
         dx = 1.0d0/(N-1)
         dy = 1.0d0/(M-1)
         dt = 3*1e-5
-        eps = 1e-8
+        eps = 1e-7
         itc = 0
         itc_max = 1e8
         error = 100.0d0
-        k = 0
 
 !!! set up initial flow field
         call initial(N,M,dx,dy,X,Y,u,v,psi,vor,RVOR,Rpsi,T)
@@ -55,15 +54,13 @@
 
 !!! output preliminary results
             if (MOD(itc,10000).EQ.0) then
-                k = k+1
-                call output(N,M,X,Y,u,v,psi,T,k)
+                call output(N,M,X,Y,u,v,psi,T,itc)
             endif
 
         enddo
 
 !!! output data file
-        k = k+1
-        call output(N,M,X,Y,u,v,psi,T,k)
+        call output(N,M,X,Y,u,v,psi,T,itc)
 
         open(unit=03,file='results.txt',status='unknown')
 
@@ -205,7 +202,8 @@
 
         do i=3,N-2
             do j=3,M-2
-                S(i,j) = vor(i,j)-(psi(i+1,j)-2.0d0*psi(i,j)+psi(i-1,j))/dx/dx-(psi(i,j+1)-2.0d0*psi(i,j)+psi(i,j-1))/dy/dy
+                S(i,j) = vor(i,j)-(psi(i+1,j)-2.0d0*psi(i,j)+psi(i-1,j))/dx/dx &
+                                -(psi(i,j+1)-2.0d0*psi(i,j)+psi(i,j-1))/dy/dy
             enddo
         enddo
 
@@ -222,7 +220,7 @@
             Rpsi(i,M-1) = 0.0d0
         enddo
 
-        alpha = 1.5d0      !alpha is ralaxtion factor
+        alpha = 1.3d0      !alpha is ralaxtion factor
 
         do i=3,N-2
             do j=3,M-2
@@ -230,6 +228,7 @@
                 psi(i,j) = psi(i,j)+alpha*Rpsi(i,j)
             enddo
         enddo
+
 
         call bcpsi(N,M,dy,psi)
 
@@ -264,6 +263,7 @@
         integer :: i, j, N, M
         real(8) :: dx, dy
         real(8) :: psi(N,M), u(N,M), v(N,M)
+        integer velocity_order
 
         !physical boundary condition
         do i=1,N
@@ -279,12 +279,49 @@
             v(N,j) = 0.0d0
         enddo
 
-        do i=2,N-1
+        velocity_order = 2
+        select case (velocity_order)
+
+        case(2)
+            do i=2,N-1
             do j=2,M-1
                 u(i,j) = 0.5d0*(psi(i,j+1)-psi(i,j-1))/dy
                 v(i,j) = -0.5d0*(psi(i+1,j)-psi(i-1,j))/dx
             enddo
-        enddo
+            enddo
+
+        case(4)
+            do i=3,N-2
+                do j=3,M-2
+                u(i,j) = (-psi(i,j+2)+8.0d0*psi(i,j+1)-8.0d0*psi(i,j-1)+psi(i,j-2))/12.0d0/dy
+                v(i,j) = -(-psi(i+2,j)+8.0d0*psi(i+1,j)-8.0d0*psi(i-1,j)+psi(i-2,j))/12.0d0/dx
+                enddo
+            enddo
+
+            i=2
+            do j=2,M-1
+                u(i,j) = 0.5d0*(psi(i,j+1)-psi(i,j-1))/dy
+                v(i,j) = -0.5d0*(psi(i+1,j)-psi(i-1,j))/dx
+            enddo
+
+            i=N-1
+                do j=2,M-1
+                u(i,j) = 0.5d0*(psi(i,j+1)-psi(i,j-1))/dy
+                v(i,j) = -0.5d0*(psi(i+1,j)-psi(i-1,j))/dx
+            enddo
+
+            j=2
+            do i=3,N-2
+                u(i,j) = 0.5d0*(psi(i,j+1)-psi(i,j-1))/dy
+                v(i,j) = -0.5d0*(psi(i+1,j)-psi(i-1,j))/dx
+            enddo
+            j=N-1
+            do i=3,N-2
+                u(i,j) = 0.5d0*(psi(i,j+1)-psi(i,j-1))/dy
+                v(i,j) = -0.5d0*(psi(i+1,j)-psi(i-1,j))/dx
+            enddo
+
+        end select
 
         return
         end subroutine caluv
@@ -329,17 +366,71 @@
         integer :: i, j, N, M
         real(8) :: dx, dy, dt, dTx2, dTy2, dTx1, dTy1
         real(8) :: T(N,M), u(N,M), v(N,M), RT(N,M)
+        integer :: t_order
 
-       ! Interior points using FTCS Sheme
-        do i=2,N-1
-            do j=2,M-1
-                dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
-                dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
-                dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2.0/dx
-                dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2.0/dy
-                RT(i,j) = dTx2+dTy2-dTx1-dTy1
-            enddo
-        enddo
+        t_order  = 2
+        select case (t_order)
+            case(2)
+            ! Interior points using FTCS Sheme
+                do i=2,N-1
+                    do j=2,M-1
+                        dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
+                        dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
+                        dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2.0/dx
+                        dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2.0/dy
+                        RT(i,j) = dTx2+dTy2-dTx1-dTy1
+                    enddo
+                enddo
+
+            case(4)
+
+!!!                do i=3,N-2
+!!!                    do j=3,M-2
+!!!                        dTx2 = (-T(i+2,j)+16.0d0*T(i+1,j)-30.0d0*T(i,j)+16.0d0*T(i-1,j)-T(i-2,j))/12.0d0/dx/dx
+!!!                        dTy2 = (-T(i,j+2)+16.0d0*T(i,j+1)-30.0d0*T(i,j)+16.0d0*T(i,j-1)-T(i,j-2))/12.0d0/dy/dy
+!!!                        dTx1 = (-u(i+2,j)*T(i+2,j)+u(i+1,j)*8.0d0*T(i+1,j)-u(i-1,j)*8.0d0*T(i-1,j)+u(i-2,j)*T(i-2,j))/12.0d0/dx
+!!!                        dTx1 = (-v(i,j+2)*T(i,j+2)+v(i,j+1)*8.0d0*T(i,j+1)-v(i,j-1)*8.0d0*T(i,j-1)+v(i,j-2)*T(i,j-2))/12.0d0/dy
+!!!                        RT(i,j) = dTx2+dTy2-dTx1-dTy1
+!!!                    enddo
+!!!                enddo
+!!!
+!!!                j=2
+!!!                do i=2,N-1
+!!!                        dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
+!!!                        dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
+!!!                        dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2.0/dx
+!!!                        dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2.0/dy
+!!!                        RT(i,j) = dTx2+dTy2-dTx1-dTy1
+!!!                enddo
+!!!
+!!!                j=M-1
+!!!                do i=2,N-1
+!!!                        dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
+!!!                        dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
+!!!                        dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2.0/dx
+!!!                        dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2.0/dy
+!!!                        RT(i,j) = dTx2+dTy2-dTx1-dTy1
+!!!                enddo
+!!!
+!!!                i=2
+!!!                do j=3,M-2
+!!!                        dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
+!!!                        dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
+!!!                        dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2.0/dx
+!!!                        dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2.0/dy
+!!!                        RT(i,j) = dTx2+dTy2-dTx1-dTy1
+!!!                enddo
+!!!
+!!!                i=N-1
+!!!                 do j=3,M-2
+!!!                        dTx2 = (T(i+1,j)-2.0d0*T(i,j)+T(i-1,j))/dx/dx
+!!!                        dTy2 = (T(i,j+1)-2.0d0*T(i,j)+T(i,j-1))/dy/dy
+!!!                        dTx1 = (u(i+1,j)*T(i+1,j)-u(i-1,j)*T(i-1,j))/2.0/dx
+!!!                        dTy1 = (v(i,j+1)*T(i,j+1)-v(i,j-1)*T(i,j-1))/2.0/dy
+!!!                        RT(i,j) = dTx2+dTy2-dTx1-dTy1
+!!!                enddo
+
+        end select
 
         return
         end subroutine REST
@@ -350,18 +441,29 @@
         integer :: i, j, N, M
         real(8) :: dx, dy, dt
         real(8) :: T(N,M)
+        integer :: bc_order
 
-       !Left and right side boundary(Dirichlet B.C.)
+        !Left and right side boundary(Dirichlet B.C.)
         do j=1,M
             T(1,j) = 1.0d0
             T(N,j) = 0.0d0
         enddo
 
-       !Top and bottom side boundary(Neumann B.C.)
-        do i=1,N
-            T(i,1) = (4.0d0*T(i,2)-T(i,3))/3.0d0
-            T(i,M) = (4.0d0*T(i,M-1)-T(i,M-2))/3.0d0
-        enddo
+
+        bc_order = 2
+        select case (bc_order)
+            case(2)
+                do i=1,N
+                    T(i,1) = (4.0d0*T(i,2)-T(i,3))/3.0d0
+                    T(i,M) = (4.0d0*T(i,M-1)-T(i,M-2))/3.0d0
+                enddo
+            case(3)
+                !Top and bottom side boundary(Neumann B.C.)
+               do i=1,N
+                    T(i,1) = (18.0d0*T(i,2)-9.0d0*T(i,3)+2.0d0*T(i,4))/11.0d0
+                    T(i,M) = (18.0d0*T(i,M-1)-9.0d0*T(i,M-2)+2.0d0*T(i,M-3))/11.0d0
+                enddo
+        end select
 
         return
         end subroutine bcT
@@ -393,8 +495,9 @@
 
         open(unit=01,file='error.dat',status='unknown',position='append')
 
-        write(*,*) itc,' ',error
+        ! write(*,*) itc,' ',error
         if (MOD(itc,2000).EQ.0) then
+            write(*,*) itc,' ',error
             write(01,*) itc,' ',error
         endif
 
@@ -406,19 +509,16 @@
 
 
 !!! output data file
-        subroutine output(N,M,X,Y,u,v,psi,T,k)
+        subroutine output(N,M,X,Y,u,v,psi,T,itc)
         implicit none
-        integer :: N, M, i, j, k
+        integer :: N, M, i, j, itc
         real(8) :: X(N), Y(M), u(N,M), v(N,M), psi(N,M),T(N,M)
-        character*16 filename
+        character(len=100) :: filename
 
-        filename='0000cavity.dat'
-        filename(1:1) = CHAR(ICHAR('0')+MOD(k/1000,10))
-        filename(2:2) = CHAR(ICHAR('0')+MOD(k/100,10))
-        filename(3:3) = CHAR(ICHAR('0')+MOD(k/10,10))
-        filename(4:4) = CHAR(ICHAR('0')+MOD(k,10))
+        write(filename,*) itc
+        filename = adjustl(filename)
 
-        open(unit=02,file=filename,status='unknown')
+        open(unit=02,file='output_'//trim(filename)//'.plt',status='unknown')
         write(02,101)
         write(02,102)
         write(02,103) N, M
