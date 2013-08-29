@@ -16,6 +16,21 @@
 !!!               |---------------|
 !!!                Stationary Wall
 
+    module alldata
+        implicit none
+        integer, parameter :: nx=129,ny=129
+        real(8), parameter :: cs2=1.0d0/3.0d0
+        integer :: itc, itc_max
+        real(8) :: Re, U_ref, dx, dy, dt, tau
+        real(8) :: eps, error
+        real(8) :: u(nx,ny), v(nx,ny)
+        real(8) :: X(nx), Y(ny), up(nx,ny), vp(nx,ny), rho(nx,ny), p(nx,ny), psi(nx,ny)
+        real(8) :: omega(0:8), f(0:8,nx,ny)
+        real(8) :: ex(0:8), ey(0:8)
+        data ex/0.0d0,1.0d0,0.0d0, -1.0d0, 0.0d0, 1.0d0, -1.0d0, -1.0d0, 1.0d0/
+        data ey/0.0d0,0.0d0,1.0d0, 0.0d0, -1.0d0, 1.0d0, 1.0d0, -1.0d0, -1.0d0/
+    end module alldata
+
 !!!     D2Q9 Lattice Vector Properties:
 !!!              6   2   5
 !!!                \ | /
@@ -23,18 +38,26 @@
 !!!                / | \
 !!!              7   4   8
 
-
     program main
+    use alldata
     implicit none
-    include "para.h"
-    include "common.h"
-    real(8) :: error = 100.0d0
-    real(8) :: up(nx,ny), vp(nx,ny)
+
+!!! input initial data
+    Re = 10.0d0
+    U_ref = 0.1d0
+    dx = 1.0d0/(nx-1)
+    dy = 1.0d0/(ny-1)
+    dt = dx
+    tau = 3.0d0*U_ref/Re/dt+0.5d0
+    itc = 0
+    itc_max = INT(5e5)
+    eps = 1e-5
+    error = 100.0d0
 
 !!! set up initial flow field
     call initial()
 
-    do while((error.GT.eps).AND.(itc.LT.itc_max))
+    do while(itc.LT.itc_max)
 
 !!! streaming step
         call streaming()
@@ -46,13 +69,13 @@
         call collision()
 
 !!! check convergence
-        call check(up,vp,error)
+        call check()
 
 !!! output preliminary results
         if(MOD(itc,2000).EQ.0) then
             call calp()
-            call calpsi(up,vp)
-            call output(up,vp)
+            call calpsi()
+            call output()
         endif
 
     enddo
@@ -61,10 +84,10 @@
     call calp()
 
 !!! compute streamfunction
-    call calpsi(up,vp)
+    call calpsi()
 
 !!! output data file
-    call output(up,vp)
+    call output()
 
     write(*,*)
     write(*,*) '************************************************************'
@@ -83,11 +106,11 @@
 
 !!! set up initial flow field
     subroutine initial()
+    use alldata
     implicit none
-    include "para.h"
-    include "common.h"
     integer :: i, j
     integer :: alpha
+    real(8) :: un(0:8)
     real(8) :: us2
 
     do i=1,nx
@@ -95,6 +118,13 @@
     enddo
     do j=1,ny
         Y(j) = (j-1)*dy
+    enddo
+    psi = 0.0d0
+    rho = 1.0d0
+    u = 0.0d0
+    v = 0.0d0
+    do i=1,nx
+        u(i,ny) = U_ref
     enddo
 
     omega(0) = 4.0d0/9.0d0
@@ -104,16 +134,6 @@
     do alpha=5,8
         omega(alpha) = 1.0d0/36.0d0
     enddo
-
-    u = 0.0d0
-    v = 0.0d0
-    rho = 1.0d0
-    psi = 0.0d0
-    do i=1,nx
-        u(i,ny) = U_ref
-    enddo
-
-    itc = 0
 
     do i=1,nx
         do j=1,ny
@@ -130,9 +150,8 @@
 
 !!! streaming step
     subroutine streaming()
+    use alldata
     implicit none
-    include "para.h"
-    include "common.h"
     integer :: i, j
 
     do i=1,nx
@@ -194,12 +213,11 @@
 
 !!! collision step
     subroutine collision()
+    use alldata
     implicit none
-    include "para.h"
-    include "common.h"
     integer :: i, j
     integer :: alpha
-    real(8) :: us2
+    real(8) :: us2, un(0:8)
     real(8) :: feq(0:8,nx,ny)
 
     do i=1,nx
@@ -226,22 +244,13 @@
         enddo
     enddo
 
-    !Left bottom corner
-    f(6,1,1) = feq(6,1,1)
-    f(8,1,1) = feq(8,1,1)
-
-    !Right bottom corner
-    f(5,nx,1) = feq(5,nx,1)
-    f(7,nx,1) = feq(7,nx,1)
-
     return
     end subroutine collision
 
 !!! boundary condition
     subroutine bounceback()
+    use alldata
     implicit none
-    include "para.h"
-    include "common.h"
     integer :: i, j
 
     do j=2,ny-1
@@ -277,13 +286,10 @@
     end subroutine bounceback
 
 !!! check convergence
-    subroutine check(up,vp,error)
+    subroutine check()
+    use alldata
     implicit none
-    include "para.h"
-    include "common.h"
     integer :: i, j
-    real(8) :: error
-    real(8) :: up(nx,ny), vp(nx,ny)
 
     itc = itc+1
     error = 0.0d0
@@ -316,9 +322,8 @@
 
 !!! compute pressure field
     subroutine calp()
+    use alldata
     implicit none
-    include "para.h"
-    include "common.h"
     integer :: i, j
 
     do i=1,nx
@@ -335,56 +340,51 @@
     end subroutine calp
 
 !!! compute Streamfunction
-    subroutine calpsi(up,vp)
+    subroutine calpsi()
+    use alldata
     implicit none
-    include "para.h"
-    include "common.h"
     integer :: i, j
-    real(8) :: up(nx,ny), vp(nx,ny)
 
-!        do j=1,ny
-!            psi(1,j) = 0.0d0
-!            psi(nx,j) = 0.0d0
-!        enddo
-!        do i=1,nx
-!            psi(i,1) = 0.0d0
-!            psi(i,ny) = 0.0d0
-!        enddo
+    do j=1,ny
+        psi(1,j) = 0.0d0
+        psi(nx,j) = 0.0d0
+    enddo
+    do i=1,nx
+        psi(i,1) = 0.0d0
+        psi(i,ny) = 0.0d0
+    enddo
 
     do i=3,nx-2
-        do j=2,ny-3
-            psi(i,j+1) = up(i,j)*2.0d0*dy+psi(i,j-1)
-            !psi(i+1,j) = -v(i-1,j)*2.0d0*dx+psi(i-1,j) ! Alternative and equivalent psi formulae
+        psi(i,3) = u(i,2)*2.0d0*dy+psi(i,1)
+        psi(i,2) = 0.25d0*psi(i,3)
+        do j=3,ny-3
+            psi(i,j+1) = u(i,j)*2.0d0*dy+psi(i,j-1)
+            !psi(i+1,j) = -v(i,j)*2.0d0*dx+psi(i-1,j) ! Alternative and equivalent psi formulae
         enddo
+        psi(i,ny-1) = 0.25d0*( psi(i,ny-2)-0.2d0*dy)
     enddo
 
     do j=2,ny-1
         psi(2,j) = 0.25d0*psi(3,j)
         psi(nx-1,j) = 0.25d0*psi(nx-2,j)
     enddo
-    do i=2,nx-1
-        psi(i,2) = 0.25d0*psi(i,3)
-        psi(i,ny-1) = 0.25d0*(psi(i,ny-2)-0.2d0*dy)
-    enddo
 
     return
     end subroutine calpsi
 
 !!! output data file
-    subroutine output(up,vp)
+    subroutine output()
+    use alldata
     implicit none
-    include "para.h"
-    include "common.h"
     integer :: i, j
-    real(8) :: up(nx,ny), vp(nx,ny)
     character(len=100) :: filename
 
     write(filename,*) itc
     filename = adjustl(filename)
 
-    open(unit=02,file='cavity_'//trim(filename)//'.plt',status='unknown')
-    write(02,*) 'TITLE="Lid Driven Cavity(LBM)"'
-    write(02,*) 'VARIABLES=x,y,u,v,psi,p'
+    open(unit=02,file='MRTcavity-'//trim(filename)//'.plt',status='unknown')
+    write(02,*) 'TITLE="Lid Driven Cavity(MRT)"'
+    write(02,*) 'VARIABLES="X" "Y" "U" "V" "PSI" "P"'
     write(02,101) nx, ny
     do j=1,ny
         do i = 1,nx
@@ -393,7 +393,7 @@
     enddo
 
 100 format(2x,10(e12.6,' '))
-101 format('ZONE',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'F=POINT')
+101 format('ZONE',1x,'I=',1x,i5,2x,'J=',1x,i5,1x,'DATAPACKING=POINT')
 
     close(02)
 

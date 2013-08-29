@@ -119,6 +119,12 @@
         Y(j) = (j-1)*dy
     enddo
     psi = 0.0d0
+    rho = 1.0d0
+    u = 0.0d0
+    v = 0.0d0
+    do i=1,nx
+        u(i,ny) = U_ref
+    enddo
 
     omega(0) = 4.0d0/9.0d0
     do alpha=1,4
@@ -126,13 +132,6 @@
     enddo
     do alpha=5,8
         omega(alpha) = 1.0d0/36.0d0
-    enddo
-
-    u = 0.0d0
-    v = 0.0d0
-    rho = 1.0d0
-    do i=1,nx
-        u(i,ny) = U_ref
     enddo
 
     do i=1,nx
