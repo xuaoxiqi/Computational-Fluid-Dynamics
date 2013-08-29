@@ -37,19 +37,28 @@
     do while((error.GT.eps).AND.(itc.LT.itc_max))
 
 !!! streaming step
-        call streaming()
+        call streaming_f()
 
 !!! boundary condition
-        call bounceback()
+        call bounceback_f()
 
 !!! collision step
-        call collision()
+        call collision_f()
+
+!!! streaming step
+        call streaming_T()
+
+!!! boundary condition
+        call bounceback_T()
+
+!!! collision step
+        call collision_T()
 
 !!! check convergence
         call check(up,vp,error)
 
 !!! output preliminary results
-        if(MOD(itc,2000).EQ.0) then
+        if(MOD(itc,500).EQ.0) then
             call calp()
             call calpsi(up,vp)
             call output(up,vp)
@@ -72,7 +81,7 @@
     write(*,*) 'Lattice Boltzmann Equation with BGK approximation'
     write(*,*) 'Consider D2Q9 Particle Discrete Velocity model'
     write(*,*) 'nx =',nx,',       ny =',ny
-    write(*,*) 'Re =',Re
+    write(*,*) 'Ra =',Ra
     write(*,*) 'eps =',eps
     write(*,*) 'itc =',itc
     write(*,*) '************************************************************'
@@ -89,6 +98,7 @@
     integer :: i, j
     integer :: alpha
     real(8) :: us2
+    real(8) :: un(0:8)
 
     do i=1,nx
         X(i) = (i-1)*dx
@@ -109,9 +119,11 @@
     v = 0.0d0
     rho = 1.0d0
     psi = 0.0d0
-    do i=1,nx
-        u(i,ny) = U_ref
+    temperature = 0.0d0
+    do j=1,ny
+        temperature(nx,j) = 1.0d0
     enddo
+
 
     itc = 0
 
@@ -125,36 +137,37 @@
         enddo
     enddo
 
+
     return
     end subroutine initial
 
 !!! streaming step
-    subroutine streaming()
+    subroutine streaming_f()
     implicit none
     include "para.h"
     include "common.h"
     integer :: i, j
 
     do i=1,nx
-        do j=1,ny-1
+        do j=1,ny
             f(0,i,j) = f(0,i,j)
         enddo
     enddo
 
     do i=nx,2,-1
-        do j=1,ny-1
+        do j=1,ny
             f(1,i,j) = f(1,i-1,j)
         enddo
     enddo
 
     do i=1,nx
-        do j=ny-1,2,-1
+        do j=ny,2,-1
             f(2,i,j) = f(2,i,j-1)
         enddo
     enddo
 
     do i=1,nx-1
-        do j=1,ny-1
+        do j=1,ny
             f(3,i,j) = f(3,i+1,j)
         enddo
     enddo
@@ -172,7 +185,7 @@
     enddo
 
     do i=1,nx-1
-        do j=ny-1,2,-1
+        do j=ny,2,-1
             f(6,i,j) = f(6,i+1,j-1)
         enddo
     enddo
@@ -190,25 +203,32 @@
     enddo
 
     return
-    end subroutine streaming
+    end subroutine streaming_f
 
 !!! collision step
-    subroutine collision()
+    subroutine collision_f()
     implicit none
     include "para.h"
     include "common.h"
     integer :: i, j
     integer :: alpha
     real(8) :: us2
+    real(8) :: un(0:8)
     real(8) :: feq(0:8,nx,ny)
 
     do i=1,nx
-        do j=1,ny-1
+        do j=1,ny
 
             rho(i,j) = 0.0d0
             do alpha=0,8
                 rho(i,j) = rho(i,j)+f(alpha,i,j)
             enddo
+
+            do alpha=0,8
+                force(alpha,i,j) = 0.0d0
+            enddo
+            force(2,i,j) = 0.5d0*1.0d0/3.0d0*Ma*Ma*temperature(i,j)
+            force(4,i,j) = -0.5d0*1.0d0/3.0d0*Ma*Ma*temperature(i,j)
 
             !data ex/0.0d0,1.0d0,0.0d0, -1.0d0, 0.0d0, 1.0d0, -1.0d0, -1.0d0, 1.0d0/
             !data ey/0.0d0,0.0d0,1.0d0, 0.0d0, -1.0d0, 1.0d0, 1.0d0, -1.0d0, -1.0d0/
@@ -220,7 +240,8 @@
                 un(alpha) = u(i,j)*ex(alpha) + v(i,j)*ey(alpha)
                 feq(alpha,i,j) = omega(alpha)*rho(i,j) &
                             *(1.0d0+un(alpha)/cs2+un(alpha)*un(alpha)/(2.0d0*cs2*cs2)-us2/(2.0d0*cs2))
-                f(alpha,i,j) = f(alpha,i,j)-1.0d0/tau*(f(alpha,i,j)-feq(alpha,i,j))
+                f(alpha,i,j) = f(alpha,i,j)-1.0d0/tau_f*(f(alpha,i,j)-feq(alpha,i,j)) &
+                            +dt*force(alpha,i,j)
             enddo
 
         enddo
@@ -235,10 +256,10 @@
     f(7,nx,1) = feq(7,nx,1)
 
     return
-    end subroutine collision
+    end subroutine collision_f
 
 !!! boundary condition
-    subroutine bounceback()
+    subroutine bounceback_f()
     implicit none
     include "para.h"
     include "common.h"
@@ -256,26 +277,179 @@
         f(7,nx,j) = f(5,nx,j)
     enddo
 
-    do i=2,nx-1
+    do i=1,nx
         !Bottom side
         f(2,i,1) = f(4,i,1)
         f(5,i,1) = f(7,i,1)
         f(6,i,1) = f(8,i,1)
+
+        !Top side
+        f(4,i,nx) = f(2,i,nx)
+        f(7,i,nx) = f(5,i,nx)
+        f(8,i,nx) = f(6,i,nx)
+
     enddo
 
-    !Left-Bottom corner
-    f(1,1,1) = f(3,1,1)
-    f(2,1,1) = f(4,1,1)
-    f(5,1,1) = f(7,1,j)
-
-    !Right-Bottom corner
-    f(3,nx,1) = f(1,nx,1)
-    f(6,nx,1) = f(8,nx,1)
-    f(2,nx,1) = f(4,nx,1)
+!    !Left-Bottom corner
+!    f(1,1,1) = f(3,1,1)
+!    f(2,1,1) = f(4,1,1)
+!    f(5,1,1) = f(7,1,j)
+!
+!    !Right-Bottom corner
+!    f(3,nx,1) = f(1,nx,1)
+!    f(6,nx,1) = f(8,nx,1)
+!    f(2,nx,1) = f(4,nx,1)
 
     return
-    end subroutine bounceback
+    end subroutine bounceback_f
 
+
+
+!!! streaming step
+    subroutine streaming_T()
+    implicit none
+    include "para.h"
+    include "common.h"
+    integer :: i, j
+
+!    do i=1,nx
+!        do j=1,ny-1
+!            T(0,i,j) = T(0,i,j)
+!        enddo
+!    enddo
+
+    do i=nx,2,-1
+        do j=1,ny
+            T(1,i,j) = T(1,i-1,j)
+        enddo
+    enddo
+
+    do i=1,nx
+        do j=ny,2,-1
+            T(2,i,j) = T(2,i,j-1)
+        enddo
+    enddo
+
+    do i=2,nx-1
+        do j=1,ny
+            T(3,i,j) = T(3,i+1,j)
+        enddo
+    enddo
+
+    do i=1,nx
+        do j=1,ny-1
+            T(4,i,j) = T(4,i,j+1)
+        enddo
+    enddo
+
+!    do i=nx,2,-1
+!        do j=ny-1,2,-1
+!            T(5,i,j) = T(5,i-1,j-1)
+!        enddo
+!    enddo
+!
+!    do i=1,nx-1
+!        do j=ny-1,2,-1
+!            T(6,i,j) = T(6,i+1,j-1)
+!        enddo
+!    enddo
+!
+!    do i=1,nx-1
+!        do j=1,ny-1
+!            T(7,i,j) = T(7,i+1,j+1)
+!        enddo
+!    enddo
+!
+!    do i=nx,2,-1
+!        do j=1,ny-1
+!            T(8,i,j) = T(8,i-1,j+1)
+!        enddo
+!    enddo
+
+    return
+    end subroutine streaming_T
+
+!!! collision step
+    subroutine collision_T()
+    implicit none
+    include "para.h"
+    include "common.h"
+    integer :: i, j
+    integer :: alpha
+    real(8) :: un(0:8)
+    real(8) :: Teq(0:4,nx,ny)
+
+    do i=2,nx-1
+        do j=1,ny
+
+            temperature(i,j) = 0.0d0
+            do alpha = 1,4
+                temperature(i,j) = temperature(i,j)+T(alpha,i,j)
+            enddo
+
+            do alpha=1,4
+                un(alpha) = u(i,j)*ex(alpha) + v(i,j)*ey(alpha)
+!                Teq(alpha,i,j) = omega(alpha)*temperature(i,j) &
+!                            *(1.0d0+un(alpha)/cs2+4.5d0*un(alpha)*un(alpha)/(cs2*cs2)-1.5d0*us2/cs2)
+                Teq(alpha,i,j) = temperature(i,j)/4.0d0*(1.0d0+2.0d0*un(alpha)/cs2)
+                T(alpha,i,j) = T(alpha,i,j)-1.0d0/tau_T*(T(alpha,i,j)-Teq(alpha,i,j))
+            enddo
+
+        enddo
+    enddo
+
+    do j=1,ny
+        temperature(1,j) = 1.0d0
+        temperature(nx,j) = 0.0d0
+    enddo
+
+
+    return
+    end subroutine collision_T
+
+!!! boundary condition
+    subroutine bounceback_T()
+    implicit none
+    include "para.h"
+    include "common.h"
+    integer :: i, j
+
+    do j=2,ny-1
+        !Left side
+        T(1,1,j) = T(3,1,j)
+!        T(5,1,j) = T(7,1,j)
+!        T(8,1,j) = T(6,1,j)
+
+        !Right side
+        T(3,nx,j) = T(1,nx,j)
+!        T(6,nx,j) = T(8,nx,j)
+!        T(7,nx,j) = T(5,nx,j)
+    enddo
+
+    do i=1,nx
+        !Bottom side
+        T(2,i,1) = T(4,i,1)
+!        T(5,i,1) = T(7,i,1)
+!        T(6,i,1) = T(8,i,1)
+
+        !Top side
+        T(4,i,ny) = T(2,i,ny)
+!        T(7,i,ny) = T(5,i,ny)
+!        T(8,i,ny) = T(6,i,ny)
+    enddo
+
+!    !Left-Bottom corner
+!    T(1,1,1) = T(3,1,1)
+!    T(2,1,1) = T(4,1,1)
+!    T(5,1,1) = T(7,1,j)
+!
+!    !Right-Bottom corner
+!    T(3,nx,1) = T(1,nx,1)
+!    T(6,nx,1) = T(8,nx,1)
+!    T(2,nx,1) = T(4,nx,1)
+
+    return
+    end subroutine bounceback_T
 !!! check convergence
     subroutine check(up,vp,error)
     implicit none
@@ -322,14 +496,11 @@
     integer :: i, j
 
     do i=1,nx
-        do j=1,ny-1
+        do j=1,ny
             p(i,j) = rho(i,j)*cs2
         enddo
     enddo
 
-    do i=1,nx
-        p(i,ny) = cs2
-    enddo
 
     return
     end subroutine calp
@@ -342,29 +513,28 @@
     integer :: i, j
     real(8) :: up(nx,ny), vp(nx,ny)
 
-!        do j=1,ny
-!            psi(1,j) = 0.0d0
-!            psi(nx,j) = 0.0d0
-!        enddo
-!        do i=1,nx
-!            psi(i,1) = 0.0d0
-!            psi(i,ny) = 0.0d0
-!        enddo
+        do j=1,ny
+            psi(1,j) = 0.0d0
+            psi(nx,j) = 0.0d0
+        enddo
+        do i=1,nx
+            psi(i,1) = 0.0d0
+            psi(i,ny) = 0.0d0
+        enddo
 
     do i=3,nx-2
-        do j=2,ny-3
+            psi(i,3) = up(i,2)*2.0d0*dy+psi(i,1)
+            psi(i,2) = 0.25d0*psi(i,3)
+        do j=3,ny-3
             psi(i,j+1) = up(i,j)*2.0d0*dy+psi(i,j-1)
-            !psi(i+1,j) = -v(i-1,j)*2.0d0*dx+psi(i-1,j) ! Alternative and equivalent psi formulae
+            !psi(i+1,j) = -v(i,j)*2.0d0*dx+psi(i-1,j) ! Alternative and equivalent psi formulae
         enddo
+        psi(i,ny-1) = 0.25d0*psi(i,ny-2)
     enddo
 
     do j=2,ny-1
         psi(2,j) = 0.25d0*psi(3,j)
         psi(nx-1,j) = 0.25d0*psi(nx-2,j)
-    enddo
-    do i=2,nx-1
-        psi(i,2) = 0.25d0*psi(i,3)
-        psi(i,ny-1) = 0.25d0*(psi(i,ny-2)-0.2d0*dy)
     enddo
 
     return
@@ -382,13 +552,13 @@
     write(filename,*) itc
     filename = adjustl(filename)
 
-    open(unit=02,file='cavity_'//trim(filename)//'.plt',status='unknown')
+    open(unit=02,file='rb_'//trim(filename)//'.plt',status='unknown')
     write(02,*) 'TITLE="Lid Driven Cavity(LBM)"'
-    write(02,*) 'VARIABLES=x,y,u,v,psi,p'
+    write(02,*) 'VARIABLES=x,y,u,v,psi,temperature'
     write(02,101) nx, ny
     do j=1,ny
         do i = 1,nx
-            write(02,100) X(i), Y(j), up(i,j), vp(i,j), psi(i,j), p(i,j)
+            write(02,100) X(i), Y(j), up(i,j), vp(i,j), psi(i,j), temperature(i,j)
         enddo
     enddo
 

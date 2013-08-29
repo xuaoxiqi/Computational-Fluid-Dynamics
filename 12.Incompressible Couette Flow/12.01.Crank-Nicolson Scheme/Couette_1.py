@@ -58,8 +58,8 @@ def Couette():
         V[i] = Y[i] + temp
         
 #Show results
-    plt.plot(Y,U,'ro',label="Numerical Solution",linewidth=1)
-    plt.plot(Y,V,'k--',label="Exact Solution")
+    plt.plot(Y,U,'ro',label="Crank-Nicolson Scheme",linewidth=1)
+    plt.plot(Y,V,'k--',label="Analytical Solution")
     plt.xlabel(r'$\frac{y}{D}$')
     plt.ylabel(r'$u/u_e$')   
     plt.title('Incompressible Couette Flow'+'   nt='+str(nt)+'$\Delta t$')
@@ -92,7 +92,7 @@ def main():
     print 'Incompressible Couette Flow:'
     print 'Crank-Nicolson Scheme'
     Couette()
-    print 'End!'
+    print 'Program End!'
 
 if __name__=='__main__':
     main()

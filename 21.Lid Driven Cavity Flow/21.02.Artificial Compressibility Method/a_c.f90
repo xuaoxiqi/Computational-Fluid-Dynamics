@@ -21,7 +21,7 @@
         program main
         implicit none
         integer, parameter :: N=129,M=129
-        integer :: itc, itc_max, k
+        integer :: itc, itc_max
         real(8) :: u(N,M+1),v(N+1,M),p(N+1,M+1),psi(N,M),X(N), Y(M)
         real(8) :: un(N,M+1),vn(N+1,M),pn(N+1,M+1),uc(N,M),vc(N,M),pc(N,M)
         real(8) :: c, c2, Re, dt, dx, dy, eps, error
@@ -37,7 +37,6 @@
         itc = 0
         itc_max = 5*1e5
         error=100.00d0
-        k = 0
 
 !!! set up initial flow field
         call initial(N,M,dx,dy,X,Y,u,v,p,psi)
@@ -57,8 +56,7 @@
             if (MOD(itc,20000).EQ.0) then
                 call caluvp(N,M,u,v,p,uc,vc,pc)
                 call calpsi(N,M,dx,dy,uc,vc,psi)
-                k = k+1
-                call output(N,M,X,Y,uc,vc,psi,k)
+                call output(N,M,X,Y,uc,vc,psi,itc)
             endif
 
         enddo
@@ -70,8 +68,7 @@
         call calpsi(N,M,dx,dy,uc,vc,psi)
 
 !!! output data file
-        k = k+1
-        call output(N,M,X,Y,uc,vc,psi,k)
+        call output(N,M,X,Y,uc,vc,psi,itc)
 
         write(*,*)
         write(*,*) '************************************************************'
@@ -302,38 +299,32 @@
         end subroutine calpsi
 
 !!! output data file
-        subroutine output(N,M,X,Y,uc,vc,psi,k)
-        implicit none
-        integer :: N, M, i, j, k
-        real(8) :: X(N), Y(M), uc(N,M), vc(N,M), psi(N,M)
+    subroutine output(nx,ny,X,Y,uc,vc,psi,itc)
+    implicit none
+    integer :: nx, ny, i, j, itc
+    real(8) :: X(nx), Y(ny), uc(nx,ny), vc(nx,ny), psi(nx,ny)
+    character (len=100):: filename
 
-        character*16 filename
+    write(filename,*) itc
+    filename = adjustl(filename)
+    open(unit=02,file='lid_'//trim(filename)//'.plt',status='unknown')
 
-        filename='0000cavity.dat'
-        filename(1:1) = CHAR(ICHAR('0')+MOD(k/1000,10))
-        filename(2:2) = CHAR(ICHAR('0')+MOD(k/100,10))
-        filename(3:3) = CHAR(ICHAR('0')+MOD(k/10,10))
-        filename(4:4) = CHAR(ICHAR('0')+MOD(k,10))
+    write(02,*) 'TITLE="Lid Driven Cavity Flow"'
+    write(02,*) 'VARIABLES=x,y,u,v,psi'
+    write(02,*) 'ZONE','i=',nx,'j=',ny,'F=POINT'
 
-        open(unit=02,file=filename,status='unknown')
-        write(02,101)
-        write(02,102)
-        write(02,103) N, M
-        do j=1,M
-            do i = 1,N
-                write(02,100) X(i), Y(j), uc(i,j), vc(i,j), psi(i,j)
-            enddo
+    do j=1,ny
+        do i=1,nx
+            write(02,100) X(i), Y(j), uc(i,j), vc(i,j), psi(i,j)
         enddo
+    enddo
 
-100     format(2x,10(e12.6,'      '))
-101     format('Title="Lid Driven Cavity Flow"')
-102     format('Variables=x,y,u,v,psi')
-103     format('zone',1x,'i=',1x,i5,2x,'j=',1x,i5,1x,'f=point')
+100 format(2x,10(e12.6,' '))
 
-        close(02)
+    close(02)
 
-        return
-        end subroutine output
+    return
+    end subroutine output
 
 
 

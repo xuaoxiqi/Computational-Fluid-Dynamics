@@ -51,7 +51,7 @@
 !!! output preliminary results
         if(MOD(itc,2000).EQ.0) then
             call calp()
-            call calpsi(up,vp)
+            call calpsi(up)
             call output(up,vp)
         endif
 
@@ -61,7 +61,7 @@
     call calp()
 
 !!! compute streamfunction
-    call calpsi(up,vp)
+    call calpsi(up)
 
 !!! output data file
     call output(up,vp)
@@ -109,9 +109,12 @@
     v = 0.0d0
     rho = 1.0d0
     psi = 0.0d0
+
+    !$OMP PARALLEL DO
     do i=1,nx
         u(i,ny) = U_ref
     enddo
+    !$OMP END PARALLEL DO
 
     itc = 0
 
@@ -134,60 +137,82 @@
     include "para.h"
     include "common.h"
     integer :: i, j
+    integer :: OMP_GET_THREAD_NUM
 
+    !$OMP PARALLEL DO
     do i=1,nx
         do j=1,ny-1
             f(0,i,j) = f(0,i,j)
         enddo
     enddo
 
+
     do i=nx,2,-1
+        !$OMP PARALLEL DO
         do j=1,ny-1
             f(1,i,j) = f(1,i-1,j)
         enddo
+
     enddo
 
+
+
+    !$OMP DO
     do i=1,nx
         do j=ny-1,2,-1
             f(2,i,j) = f(2,i,j-1)
         enddo
     enddo
 
+    !$OMP END DO
+
+    !$OMP PARALLEL DO
     do i=1,nx-1
         do j=1,ny-1
             f(3,i,j) = f(3,i+1,j)
         enddo
     enddo
+    !$OMP END PARALLEL DO
 
+    !$OMP PARALLEL DO
     do i=1,nx
         do j=1,ny-1
             f(4,i,j) = f(4,i,j+1)
         enddo
     enddo
+    !$OMP END PARALLEL DO
 
+    !$OMP PARALLEL DO
     do i=nx,2,-1
         do j=ny-1,2,-1
             f(5,i,j) = f(5,i-1,j-1)
         enddo
     enddo
+    !$OMP END PARALLEL DO
 
+    !$OMP PARALLEL DO
     do i=1,nx-1
         do j=ny-1,2,-1
             f(6,i,j) = f(6,i+1,j-1)
         enddo
     enddo
+    !$OMP END PARALLEL DO
 
+    !$OMP PARALLEL DO
     do i=1,nx-1
         do j=1,ny-1
             f(7,i,j) = f(7,i+1,j+1)
         enddo
     enddo
+    !$OMP END PARALLEL DO
 
+    !$OMP PARALLEL DO
     do i=nx,2,-1
         do j=1,ny-1
             f(8,i,j) = f(8,i-1,j+1)
         enddo
     enddo
+    !$OMP END PARALLEL DO
 
     return
     end subroutine streaming
@@ -335,12 +360,12 @@
     end subroutine calp
 
 !!! compute Streamfunction
-    subroutine calpsi(up,vp)
+    subroutine calpsi(up)
     implicit none
     include "para.h"
     include "common.h"
     integer :: i, j
-    real(8) :: up(nx,ny), vp(nx,ny)
+    real(8) :: up(nx,ny)
 
 !        do j=1,ny
 !            psi(1,j) = 0.0d0

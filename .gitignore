@@ -6,4 +6,10 @@
 *.o
 *.save
 *.dat
+*.plt
+*.bin
 *.out
+*.png
+*.cbp
+*.layout
+*.depend

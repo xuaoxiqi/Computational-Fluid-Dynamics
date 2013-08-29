@@ -24,7 +24,7 @@
 
 !!! input initial data
         Pr = 0.7d0
-        Ra = 1e4
+        Ra = 1e3
         dx = 1.0d0/(nx-1)
         dy = 1.0d0/(ny-1)
         dt = 3*1e-5
