@@ -50,7 +50,7 @@
     dt = dx
     tau = 3.0d0*U_ref/Re/dt+0.5d0
     itc = 0
-    itc_max = INT(5e5)
+    itc_max = INT(2500)
     eps = 1e-5
     error = 100.0d0
 
@@ -72,7 +72,7 @@
         call check()
 
 !!! output preliminary results
-        if(MOD(itc,2000).EQ.0) then
+        if(MOD(itc,1000).EQ.0) then
             call calp()
             call calpsi()
             call output()
@@ -153,6 +153,20 @@
     use alldata
     implicit none
     integer :: i, j
+!!!    integer :: id, jd
+!!!    integer :: alpha
+
+!!!!---Warning: This section may not be right!
+!!!    do i=2,nx-1
+!!!        do j=2,ny-1
+!!!            do alpha=0,8
+!!!                id = i-INT(ex(alpha))
+!!!                jd = j-INT(ey(alpha))
+!!!                f(alpha,i,j) = f(alpha,id,jd)
+!!!            enddo
+!!!        enddo
+!!!    enddo
+!!!!---Warning: This section may not be right!
 
     do i=1,nx
         do j=1,ny-1
@@ -382,8 +396,8 @@
     write(filename,*) itc
     filename = adjustl(filename)
 
-    open(unit=02,file='MRTcavity-'//trim(filename)//'.plt',status='unknown')
-    write(02,*) 'TITLE="Lid Driven Cavity(MRT)"'
+    open(unit=02,file='BGKcavity-'//trim(filename)//'.plt',status='unknown')
+    write(02,*) 'TITLE="Lid Driven Cavity(BGK)"'
     write(02,*) 'VARIABLES="X" "Y" "U" "V" "PSI" "P"'
     write(02,101) nx, ny
     do j=1,ny
