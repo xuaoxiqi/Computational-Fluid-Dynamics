@@ -29,11 +29,6 @@
 * Roe Scheme
 * WENO Scheme
 
-###Lattice Boltzmann Method
-
-* Lid Driven Cavity Flow
-* Poiseuille Flow 
-
 ## Licence
 
 These are free CFD codes, and they are intended for an educational use only.
