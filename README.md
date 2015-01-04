@@ -29,11 +29,28 @@
 * Roe Scheme
 * WENO Scheme
 
+###HKUST MECH5230
+
+*Problem 1
+Forward Time Central Space (FTCS) Scheme
+Alternating Direction Explicit (ADE) Scheme
+
+*Problem 2
+Non-uniform Grid
+Coordinate Transformation
+Crank-Nicolson Method
+
+*Problem 3
+2D Steady-state Heat Equation
+
+*Problem 4
+MacCormack Method for Burgers Eequation
+
 ## Licence
 
 These are free CFD codes, and they are intended for an educational use only.
 
-Copyright (C) 2012-2013 Ao Xu
+Copyright (C) 2012-2014 Ao Xu
     
 This work is licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License. To view a copy of this license, visit [http://creativecommons.org/licenses/by-nc/3.0/](http://creativecommons.org/licenses/by-nc/3.0/) or send a letter to Creative Commons, 444 Castro Street, Suite 900, Mountain View, California, 94041, USA.
 

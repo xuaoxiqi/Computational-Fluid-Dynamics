@@ -1,0 +1,583 @@
+%!Mode:: "TeX:UTF-8"
+%----------------------------------------------------------------------------------------------------------------------------------------------------------
+\documentclass[12pt,a4paper]{article} % Default font size is 12pt, it can be changed here
+\usepackage[top=33mm, bottom=33mm]{geometry}
+\usepackage{graphicx,subfigure} % Required for including pictures
+\usepackage{float} % Allows putting an [H] in \begin{figure} to specify the exact location of the figure
+\usepackage{wrapfig} % Allows in-line images
+\usepackage{amsmath,amsthm,amsfonts,amssymb,bm} %数学公式支持宏包
+\usepackage{CJK,CJKnumb,CJKulem}         % 中文支持宏包
+\bibliographystyle{unsrt}
+\linespread{1.2} % Line spacing
+\setlength\parindent{0pt} % Uncomment to remove all indentation from paragraphs
+\graphicspath{{./images/}} % Specifies the directory where pictures are stored
+\usepackage{fancyhdr} % Custom headers and footers
+\pagestyle{fancyplain} % Makes all pages in the document conform to the custom headers and footers
+%\fancyhead{} %\fancyfoot{} No page header OR footer - if you want one, create it as demo
+\fancyhead[L]{MECH5230}
+\fancyhead[C]{Name: \textbf{Xu Ao}}
+\fancyhead[R]{ID: \textbf{20153308}}
+\fancyfoot[L]{} % Empty left footer
+\fancyfoot[C]{\thepage} % Page numbering for right footer
+\fancyfoot[R]{}
+\renewcommand{\headrulewidth}{2pt} % Remove header underlines
+\renewcommand{\footrulewidth}{0pt} % Remove footer underlines
+
+%---------------List codes-----------------------------
+%---------------List codes-----------------------------
+% packages
+\RequirePackage{color}          % color image and color definition
+\RequirePackage{fancyhdr,fancybox}       % personalize page header
+\RequirePackage{graphicx}       % include graphics
+\RequirePackage{ifthen}         % logic options
+\RequirePackage{lastpage}       % refer to the number of last page
+\RequirePackage{listings}       % format source code
+%
+\definecolor{grey}{rgb}{0.8,0.8,0.8}
+\definecolor{darkgreen}{rgb}{0,0.3,0}
+\definecolor{darkblue}{rgb}{0,0,0.3}
+\def\lstbasicfont{\fontfamily{pcr}\selectfont\footnotesize}
+\lstset{%
+% indexing
+    numbers=left,
+    numberstyle=\small,%
+% character display
+    showstringspaces=false,
+    showspaces=false,%
+    tabsize=4,%
+% style
+    frame=lines,% OR single %
+    basicstyle={\footnotesize\lstbasicfont},%
+    keywordstyle=\color{blue}\bfseries,%
+    commentstyle=\color[cmyk]{1,0,1,0},
+    stringstyle=\color{green}
+    identifierstyle=\color{blue},
+}
+\lstset{breaklines}
+\lstloadlanguages{Fortran,C,C++,Matlab,Mathematica}
+%---------------List codes-----------------------------
+%---------------List codes-----------------------------
+
+%----------------------------------------------------------------------------------------------------------------------------------------------------------
+\begin{document}
+\begin{CJK}{UTF8}{song} %开始中文环境
+%----------------------------------------------------------------------------------------------------------------------------------------------------------
+\title{MECH5230 Homework Assignment}
+\maketitle
+\tableofcontents % Include a table of contents
+\newpage % Begins the essay on a new page instead of on the same page as the table of contents
+%----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+\section{1D Time-dependent Heat Equation}
+Solve the time-dependent heat equation $T_{t}=\alpha T_{xx}$, $0 \leq x \leq L$.
+
+Initial condition: $T(x,0)=c \sin(\pi x/L)$.
+
+Boundary condition: $T(0,t)=T(L,t)=0$.
+
+Exact solution is $T_{exact}(x,t)=c \exp (-\alpha \pi ^{2} t /L^{2})\sin (\pi x /L)$
+
+Let $c=100^{\circ}C$, $L=1m$, $\alpha=0.02 m^{2}/h$.
+\begin{enumerate}
+  \item Simple explicit method.
+
+Forward Time Central Space (FTCS):
+\begin{equation}
+\frac{T^{n+1}_{i}-T^{n}_{i}}{\Delta t}=\alpha \frac{T_{i+1}^{n}-2T_{i}^{n}+T_{i-1}^{n}}{(\Delta x)^{2}}
+\end{equation}
+i.e.,
+\begin{equation}
+T^{n+1}_{i}=T^{n}_{i}+\frac{\alpha \Delta t}{(\Delta x)^{2}}(T_{i+1}^{n}-2T_{i}^{n}+T_{i-1}^{n})
+\end{equation}
+
+  \item Alternating direction explicit (ADE) method proposed by Barakat and Clark.
+
+the calculation procedure is simultaneously marched in both directions
+($p_{i}^{n+1}$ is updated from left-side points, while $q_{i}^{n+1}$ is updated from right-side points)
+the resulting solution are averaged to obtain the final value of $T_{i}^{n+1}$.
+\begin{equation}
+    \begin{split}
+& \frac{p^{n+1}_{i}-p^{n}_{i}}{\Delta t}=\alpha \frac{p_{i+1}^{n}-p_{i}^{n}-p_{i}^{n+1}+p_{i-1}^{n+1}}{(\Delta x)^{2}} \\
+& \frac{q^{n+1}_{i}-q^{n}_{i}}{\Delta t}=\alpha \frac{q_{i+1}^{n+1}-q_{i}^{n+1}-q_{i}^{n}+q_{i-1}^{n}}{(\Delta x)^{2}} \\
+& T_{i}^{n+1} = \frac{1}{2}(p^{n+1}_{i}+q^{n+1}_{i}) \\
+    \end{split}
+\end{equation}
+i.e.,
+\begin{equation}
+    \begin{split}
+& p_{i}^{n+1}[1+\frac{\alpha \Delta t}{(\Delta x)^{2}}]=\frac{\alpha \Delta t}{(\Delta x)^{2}}p_{i-1}^{n+1}+[1-\frac{\alpha \Delta t}{(\Delta x)^{2}}]p_{i}^{n}+\frac{\alpha \Delta t}{(\Delta x)^{2}}p_{i+1}^{n} \\
+& q_{i}^{n+1}[1+\frac{\alpha \Delta t}{(\Delta x)^{2}}]=\frac{\alpha \Delta t}{(\Delta x)^{2}}q_{i+1}^{n+1}+[1-\frac{\alpha \Delta t}{(\Delta x)^{2}}]q_{i}^{n}+\frac{\alpha \Delta t}{(\Delta x)^{2}}q_{i-1}^{n} \\
+& T_{i}^{n+1} = \frac{1}{2}(p^{n+1}_{i}+q^{n+1}_{i}) \\
+    \end{split}
+\end{equation}
+
+\end{enumerate}
+
+\subsection{Comparison of FTCS and ADE Scheme}
+For $\Delta x=0.1$ and $\Delta t=0.1$ compare results for $t=10h$ in a graph, as shown in Fig.\ref{Fig.1-a}
+
+\subsection{Accuracy of FTCS Scheme}
+
+Refining the mesh as $\Delta x=0.066667$ while remaining the time step as $\Delta t=0.1h$ compare results for $t=10h$ in a graph, as shown in Fig.\ref{Fig.1-b}
+
+\begin{figure}[htbp]
+\centering
+\subfigure[$\Delta x=0.1, \ \Delta t=0.1$]
+{
+  \includegraphics[width=7cm]{./1/a.png} \label{Fig.1-a}
+}
+\subfigure[$\Delta x=0.066667, \ \Delta t=0.1$]
+{
+  \includegraphics[width=7cm]{./1/b.png}  \label{Fig.1-b}
+}
+\caption{Comparison results of FTCS (Forward Time Central Space) and ADE (Alternating Direction Explicit) scheme ($t=10h$) with different mesh resolution}
+\end{figure}
+
+
+For FTCS scheme, after refining the mesh, however, the error does \textbf{NOT} reduce as suggested by $O(\Delta x^{2})$.
+This is mainly due to the reason that for FTCS scheme,
+the error is related with both space step and time step, i.e., $O(\Delta x^{2},\Delta t)$.
+The influence of time step $\Delta t$ on error is prominent for time-dependent problem.
+Later we will found different situation in Problem 2(2), where a steady problem is considered.
+
+\subsection{Stability of FTCS Scheme}
+For FTCS scheme, the error is $O(\Delta x^{2},\Delta t)$. At given mesh resolution ($\Delta x$), the error will be dependent on $\Delta t$.
+
+Define CFL number as
+\begin{equation}
+CFL=\frac{\alpha \Delta t}{(\Delta x)^{2}}
+\end{equation}
+by choose smaller $\Delta t$ (i.e., choose smaller $CFL$ number), we can actually reduce the error.
+
+Here, we choose $\Delta x=0.1$ and $CFL=0.06, 0.6$.
+
+Define $L^{2}$ norm error of temperature as
+\begin{equation}
+Error(t)=\sqrt{\frac{\sum[T_{numerical}(t)-T_{exact}(t)]^{2}}{\sum T_{exact}(t)^{2}}}
+\end{equation}
+
+We can found from Fig.\ref{Fig.1-error} that $L^{2}$ norm error of temperature for $CFL=0.6$ progressively become larger,
+while slightly change for $CFL=0.06$.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=7cm]{./1/error.png}
+\caption{Error evolution within $20h$ of problem time under different $CFL$ number for FTCS method} \label{Fig.1-error}
+\end{figure}
+
+%%%\begin{figure}[htbp]
+%%%\centering
+%%%\subfigure[Temperature distribution at $t=20h$]
+%%%{
+%%%        \includegraphics[width=7cm]{./1/cfl.png}
+%%%}
+%%%\subfigure[centerline temperature vs. time]
+%%%{
+%%%        \includegraphics[width=7cm]{./1/cfl_time.png}
+%%%}
+%%%\caption{Comparison FTCS results of FTCS under different CFL number}
+%%%\end{figure}
+%%%We can found that $CFL=0.01$ (the green line) has the smallest error among the test cases.
+
+\subsection{Accuracy of ADE Scheme}
+Again, define CFL number as
+\begin{equation}
+CFL=\frac{\alpha \Delta t}{(\Delta x)^{2}}
+\end{equation}
+
+Choose $\Delta x=0.1$ and $CFL=1, 2, 3$, compare corresponding results with exact solution as shown in Fig.\ref{Fig.1-d}.
+\begin{figure}[htbp]
+\centering
+{
+    \includegraphics[width=9cm]{./1/d.png}
+}
+\caption{Comparison ADE results of FTCS under different CFL number} \label{Fig.1-d}
+\end{figure}
+We can found, as $CFL$ number increase, the discrepancy becomes noticeable.
+
+
+\newpage
+\section{1D Steady-state Heat Equation with Source Term}
+
+Solve heat equation with a source term $T_{t}=\alpha T_{xx} +S(x)$, $0 \leq x \leq L_{x}$.
+
+Initial condition: $T(x,0)=0$.
+
+Boundary condition: $T(0,t)=0,\ T(L_{x},t)=T_{steady}(L_{x})$.
+
+Exact steady solution is $T_{steady}(x)=x^{2}e^{-x}$.
+
+Let $\alpha=1,\ L_{x}=15,\ S(x)=-(x^{2}-4x+2)e^{-x}$.
+
+\subsection{Exact Solution}
+Verify the exact steady solution is $T_{steady}(x)=x^{2}e^{-x}$.
+
+For steady solution, $T_{t}=0$, then the heat equation at steady state is
+\begin{equation}
+\alpha T_{xx} +S(x) = 0
+\end{equation}
+
+Since,
+\begin{equation}
+    \begin{split}
+    & S(x)=-(x^{2}-4x+2)e^{-x} \\
+    & T(x) = x^{2} e^{-x} \\
+    & T_{x}(x) = 2xe^{-x}-x^{2}e^{-x}=(2x-x^{2})e^{-x} \\
+    & T_{xx}(x) = (2-2x)e^{-x}-(2x-x^{2})e^{-x} = (2-4x+x^{2})e^{-x} \\
+    \end{split}
+\end{equation}
+thus,
+\begin{equation}
+\alpha T_{xx}(x)+S(x)=(2-4x+x^{2})e^{-x}-(x^{2}-4x+2)e^{-x} =0
+\end{equation}
+proving that exact solution is $T_{steady}(x) = x^{2} e^{-x}$
+
+Plot exact solution as shown in Fig.\ref{Fig.2-a}.
+\begin{figure}[htbp]
+\centering
+{
+    \includegraphics[width=7cm]{./2/a.png}
+}
+\caption{Exact solution of 1D heat equation with source term} \label{Fig.2-a}
+\end{figure}
+
+\subsection{FTCS Scheme}
+Explicit Euler for time advancement and second-order central difference scheme on a uniform grid:
+\begin{equation}
+X_{i}=i\cdot \ \Delta x
+\end{equation}
+\begin{equation}
+\frac{T_{i}^{n+1}-T_{i}^{n}}{\Delta t}=\alpha \frac{T_{i+1}^{n}-2T_{i}^{n}+T_{i-1}^{n}}{(\Delta x)^{2}}+S(X_{i})
+\end{equation}
+i.e.,
+\begin{equation}
+T_{i}^{n+1}=T_{i}^{n}+\frac{\alpha \Delta t}{(\Delta x)^{2}}(T_{i+1}^{n}-2T_{i}^{n}+T_{i-1}^{n})-\Delta t (X_{i}^{2}-4X_{i}+2)e^{-X{i}}
+\end{equation}
+Plot the exact and numerical steady solutions for $N_{x}=10,20$ as Fig.\ref{Fig.2-b}.
+
+\begin{figure}[htbp]
+\centering
+{
+    \includegraphics[width=9cm]{./2/b.png}
+}
+\caption{Results of FTCS with different uniform mesh grids} \label{Fig.2-b}
+\end{figure}
+We can found that increase the grid numbers indeed reduce the error.
+It should be noted that different from Problem 1.(2), which is time-dependent problem, the error is $O(\Delta x^{2},\Delta t)$.
+While for steady problem, like this one, $\Delta t$ have little influence on the error.
+Small $\Delta t$ requires longer iterative steps to converge to steady solution, while larger $\Delta t$ requires less (so long the program is stable). The influence of space step $\Delta x$ on error is prominent for steady problem. Thus, refine the mesh resolution reduces the error.
+
+\subsection{Non-uniform Grid}
+On a non-uniform grid $X_{j}=L_{x}[1-\cos(\frac{\pi j}{2N_{x}})]$, perform Taylor expansion,
+\begin{equation}
+    \begin{split}
+& f_{j+1}=f_{j}+\Delta x_{j+1} f_{j}^{'}+\frac{(\Delta x_{j+1})^{2}}{2}f_{j}^{''}+\frac{(\Delta x_{j+1})^{3}}{3!}f_{i}^{'''} + \cdots \\
+& f_{j-1}=f_{j}-\Delta x_{j} f_{j}^{'}+\frac{(\Delta x_{j})^{2}}{2}f_{j}^{''}-\frac{(\Delta x_{j})^{3}}{3!}f_{i}^{'''} + \cdots \\
+    \end{split}
+\end{equation}
+thus, we have
+\begin{equation}
+f_{j}^{''}=2\ \frac{\Delta x_{j}(f_{j+1}-f_{j})-\Delta x_{j+1}(f_{j}-f_{j-1})}{\Delta x_{j} \ \Delta x_{j+1} \ (\Delta x_{j}+\Delta x_{j+1})}
+\end{equation}
+where $\Delta x_{j}=X_{j}-X_{j-1}$.
+
+Discretization of heat equation leads to
+\begin{equation}
+\begin{split}
+& \frac{T_{j}^{n+1}-T_{j}^{n}}{\Delta t}=\alpha \ 2 \frac{\Delta x_{j}(T_{j+1}^{n}-T_{j}^{n})-\Delta x_{j+1}(T_{j}^{n}-T_{j-1}^{n})}{\Delta x_{j} \ \Delta x_{j+1} \ (\Delta x_{j}+\Delta x_{j+1})}-(X_{j}^{2}-4X_{j}+2)e^{-X_{j}} \\
+& X_{j}=L_{x}[1-\cos(\frac{\pi j}{2N_{x}})] \\
+& \Delta x_{j}=X_{j}-X_{j-1} \\
+\end{split}
+\end{equation}
+A comparison of grids is shown in Fig.\ref{Fig.2-cGrid}
+\begin{figure}[htbp]
+\centering
+{
+    \includegraphics[width=9cm]{./2/c_grid.png}
+}
+\caption{Comparison of non-uniform grid and uniform grid ($N_{x}=10$)} \label{Fig.2-cGrid}
+\end{figure}
+
+Plot the exact and numerical steady solutions for $N_{x}=10,20$ as Fig.\ref{Fig.2-c}.
+
+\begin{figure}[htbp]
+\centering
+{
+    \includegraphics[width=9cm]{./2/c.png}
+}
+\caption{Results of FTCS with different non-uniform mesh grids} \label{Fig.2-c}
+\end{figure}
+
+Compare Fig.\ref{Fig.2-b} and Fig.\ref{Fig.2-c} we can conclude using more (non-uniform grid) points in the region where solution changes rapidly (e.g., $0\leq x \leq 5$) will reduce the error.
+
+\subsection{Coordinate Transformation}
+Transform the differential equation a new coordinate system using the transform $\xi_{j}=\cos^{-1}(1-X_{j}/L_{x})$.
+\begin{equation}
+\begin{split}
+&   X_{j}=L_{x}[1-\cos(\frac{\pi j}{2N_{x}})] \\
+&   \xi_{j}=\frac{\pi j}{2N_{x}} \\
+\end{split}
+\end{equation}
+Based on the chain rule of derivatives, the transformation is conducted as
+\begin{equation}
+Define: \ \  A = \frac{\partial }{\partial x},\ thus, \ \  A= (\frac{\partial \xi}{\partial x}) \ \frac{\partial }{\partial \xi}
+\end{equation}
+
+\begin{equation}
+Define: \ \ B=\frac{\partial ^{2}}{\partial x \partial \xi}=\frac{\partial}{\partial x}(\frac{\partial }{\partial \xi})
+,\ thus,\ B=A(\frac{\partial }{\partial \xi})= (\frac{\partial \xi}{\partial x}) \ \frac{\partial }{\partial \xi} (\frac{\partial }{\partial \xi})=(\frac{\partial \xi}{\partial x})(\frac{\partial ^{2}}{\partial \xi^{2}})
+\end{equation}
+
+\begin{equation}
+\frac{\partial ^{2}}{\partial x^{2}} =\frac{\partial A}{\partial x}=\frac{\partial }{\partial x}(\frac{\partial \xi}{\partial x} \ \frac{\partial }{\partial \xi} ) = \frac{\partial^{2}\xi}{\partial x^{2}}\frac{\partial }{\partial \xi}+\frac{\partial \xi}{\partial x}\frac{\partial ^{2}}{\partial x \partial \xi}=(\frac{\partial ^{2}\xi}{\partial x^{2}})(\frac{\partial }{\partial \xi})+(\frac{\partial \xi}{\partial x})^{2}(\frac{\partial ^{2}}{\partial \xi^{2}}) \label{Eq.partial}
+\end{equation}
+then,
+\begin{equation}
+\frac{\partial ^{2}T}{\partial x^{2}}=
+\frac{\partial ^{2}\xi}{\partial x^{2}}\frac{\partial T}{\partial \xi}+(\frac{\partial \xi}{\partial x})^{2}\frac{\partial ^{2}T}{\partial \xi^{2}}
+\end{equation}
+For $\xi=\cos^{-1}(1-x/L_{x})$, we have
+\begin{equation}
+\frac{\partial \xi}{\partial x}=\frac{1}{\sqrt{2x L_{x}-x^{2}}}
+\end{equation}
+\begin{equation}
+\frac{\partial ^{2}\xi}{\partial x^{2}}=\frac{-(L_{x}-x)}{\sqrt{(2x L_{x}-x^{2})^{3}}}
+\end{equation}
+
+the heat equation in $(\xi, t)$ coordinate system is
+\begin{equation}
+\frac{\partial T}{\partial t}=\alpha [\frac{\partial ^{2}\xi}{\partial x^{2}}\frac{\partial T}{\partial \xi}+(\frac{\partial \xi}{\partial x})^{2}\frac{\partial ^{2}T}{\partial \xi^{2}}]+S[L_{x}(1-\cos \xi)]
+\end{equation}
+discretization form is
+\begin{equation}
+    \begin{split}
+\frac{T_{j}^{n+1}-T_{j}^{n}}{\Delta t}= & \alpha[\frac{-(L_{x}-X_{j})}{\sqrt{(2X_{j} L_{x}-X_{j}^{2})^{3}}}
+\frac{T_{j+1}^{n}-T_{j-1}^{n}}{2\Delta \xi}+
+\frac{1}{(2X_{j} L_{x}-X_{j}^{2})}\frac{T_{j+1}^{n+1}-2T_{j}^{n}+T_{j}^{n-1}}{(\Delta \xi)^{2}}
+]  \\
+&    +S[L_{x}(1-\cos \xi_{j})] \\
+    \end{split}
+\end{equation}
+
+The numerical results is shown in Fig.\ref{Fig.2-d}.
+\begin{figure}[htbp]
+\centering
+{
+    \includegraphics[width=9cm]{./2/d.png}
+}
+\caption{Results of FTCS with different uniform mesh grids (after coordinate transformation)} \label{Fig.2-d}
+\end{figure}
+It should be pointed out that Fig.\ref{Fig.2-d} looks much like Fig.\ref{Fig.2-c}.
+The difference is that here the calculation of $T$ is based on a uniform grid $\xi$,
+while in Problem 2(3) calculation is on a non-uniform grid $x$.
+
+\subsection{Crank-Nicolson Method}
+Using Crank-Nicolson method for time advancement,
+\begin{equation}
+\frac{T_{i}^{n+1}-T_{i}^{n}}{\Delta t}=\alpha
+\frac{{\frac{1}{2}(T_{i+1}^{n+1}+T_{i+1}^{n})-2\cdot \frac{1}{2}(T_{i}^{n+1}+T_{i}^{n})}+\frac{1}{2}(T_{i-1}^{n+1}+T_{i-1}^{n})}
+{(\Delta x)^{2}}+S(X_{i})
+\end{equation}
+then, we have
+\begin{equation}
+\frac{\alpha \Delta t}{2(\Delta x)^{2}}T_{i-1}^{n+1}-[1+\frac{\alpha \Delta t}{(\Delta x)^{2}}]T_{i}^{n+1}+\frac{\alpha \Delta t}{2(\Delta x)^{2}}T_{i+1}^{n+1}=
+-T_{i}^{n}-\frac{\alpha \Delta t}{2(\Delta x)^{2}}(T_{i+1}^{n}-2T_{i}^{n}+T_{i-1}^{n})-S(X_{i})\Delta t \label{Eq.CN-full}
+\end{equation}
+Define
+\begin{equation}
+    \begin{split}
+& A = \frac{\alpha \Delta t}{2(\Delta x)^{2}} \\
+& B = -[1+\frac{\alpha \Delta t}{(\Delta x)^{2}}] \\
+& C = \frac{\alpha \Delta t}{2(\Delta x)^{2}} \\
+& K_{i} = -T_{i}^{n}-\frac{\alpha \Delta t}{2(\Delta x)^{2}}(T_{i+1}^{n}-2T_{i}^{n}+T_{i-1}^{n})-S(X_{i})\Delta t \\
+    \end{split}
+\end{equation}
+then, Eq.\ref{Eq.CN-full} is denoted as
+\begin{equation}
+AT_{i-1}^{n+1}+BT_{i}^{n+1}+CT_{i+1}^{n+1} = K_{i}
+\end{equation}
+The Thomas algorithm will be employed to solve above tridiagonal systems of equations.
+
+The numerical results is shown in Fig.\ref{Fig.2-e}.
+\begin{figure}[htbp]
+\centering
+{
+    \includegraphics[width=9cm]{./2/e.png}
+}
+\caption{Results of Crank-Nicolson method on uniform mesh grids} \label{Fig.2-e}
+\end{figure}
+
+
+\subsection{Discussion}
+
+For each method mentioned above, given grid points $N_{x}=20$.
+
+The convergence criterion is
+\begin{equation}
+\frac{|T(t)-T(t-2)|}{\sum |T(t)|} \leq 10^{-7}
+\end{equation}
+
+\begin{enumerate}
+  \item Find the maximum time step required for stable solutions.
+          \begin{table}[htbp]
+          \centering
+          \caption{Comparison of different methods}
+          \begin{tabular}{|l|c|c|c|c|}
+          \hline
+           & FTCS & Non-uniform grid & coordinate transform & Crank-Nicolson \\
+          \hline
+          $(\Delta t)_{\max}$ & 0.51 & 0.006 & 0.009 & $\ge 1.0$ \\
+          \hline
+          iteration  & 80   & 29460 & 20656 & 290 \\
+          \hline
+          \end{tabular}
+          \end{table}
+
+  \item Plot transient soulutions at $t=2$ and $t=10$ as shown in Fig.\ref{Fig.2-time}.
+          \begin{figure}[htbp]
+            \centering
+            \subfigure[$t=2$]
+            {
+                \includegraphics[width=7cm]{./2/t2.png}
+            }
+            \subfigure[$t=10$]
+            {
+                \includegraphics[width=7cm]{./2/t10.png}
+            }
+            \caption{Comparison accuracy of different methods at $t=2$ and $t=10$} \label{Fig.2-time}
+            \end{figure}
+\end{enumerate}
+
+
+
+\begin{itemize}
+    \item We compare different methods at $t=2$, at least 2 time steps are required, thus, we set $\Delta t=1.0$ for Crank-Nicolson. Actually, $\Delta t$ can be much larger than 1.0 for Crank-Nicoslon scheme since Cranki-Nicolson scheme is unconditionally stable.
+    \item FTCS scheme shows the largest discrepancy among all the test methods under unsteady condition, because the error is $O((\Delta x)^{2},\Delta t)$.
+    \item Using non-uniform grid, i.e., put more mesh points in the region where solutions change rapidly, will help reduce the error.
+\end{itemize}
+
+
+
+\newpage
+\section{2D Steady-state Heat Equation}
+Solve steady-state 2D heat conduction  equation in unit square.
+
+Boundary condition:
+\begin{itemize}
+  \item at $x=0$, \ $T=0$.
+  \item at $x=1$, \ $T=0$.
+  \item at $y=0$, \ $\frac{\partial T}{\partial y}=0$.
+  \item at $y=1$, \ $T=\sin (\pi x)$.
+\end{itemize}
+
+The analytical solution can be obtained by variable separation
+\begin{equation}
+T_{exact} = \frac{\cosh(\pi y)}{\cosh(\pi)} \sin (\pi x)
+\end{equation}
+
+2D heat equation is
+\begin{equation}
+\frac{\partial T}{\partial t} = \alpha (\frac{\partial^{2} T}{\partial x^{2}}+\frac{\partial^{2} T}{\partial y^{2}})
+\end{equation}
+steady state can be obtained when $t \rightarrow \infty $ thus  $\partial T / \partial t = 0$.
+
+The convergence criterion for the solution to reach steady state is
+\begin{equation}
+\frac{|T(t)-T(t-100)|}{\sum |T(t)|} \leq 10^{-7}
+\end{equation}
+
+Discretization of heat equation:
+\begin{equation}
+\frac{T_{i,j}^{n+1}-T_{i,j}^{n}}{\Delta t}=\alpha [ \frac{T_{i+1,j}^{n}-2T_{i,j}^{n}+T_{i-1,j}^{n}}{(\Delta x)^{2}} +\frac{T_{i,j+1}^{n}-2T_{i,j}^{n}+T_{i,j-1}^{n}}{(\Delta y)^{2}} ]
+\end{equation}
+
+Discretization of Neumann boundary condition:
+\begin{equation}
+(\frac{\partial T}{\partial y})_{j=1}=\frac{-3T_{i,1}+4T_{i,2}-T_{i,3}}{\Delta y}=0
+\end{equation}
+thus,
+\begin{equation}
+T_{i,1}=\frac{4T_{i,2}-T_{i,3}}{3}
+\end{equation}
+
+
+
+Here is the main code snippets:
+\lstinputlisting[language=Fortran]{./codes/3_snips.f90}
+
+The temperature field shown in Fig.\ref{Fig.3}.
+\begin{figure}[htbp]
+\centering
+\subfigure[Analytical solution]
+{
+    \includegraphics[width=7cm]{./3/3-exact.png}
+}
+\subfigure[Numerical solution (Mesh:$20\times 20$)]
+{
+    \includegraphics[width=7cm]{./3/3.png}
+}
+\caption{Steady-state 2D heat conduction } \label{Fig.3}
+\end{figure}
+
+Comparison of center temperature with the exact solution shown in Fig.\ref{Fig.3compare}
+\begin{figure}[htbp]
+\centering
+\subfigure[Temperature at $y=0.5$ plane]
+{
+    \includegraphics[width=7cm]{./3/yHalf.png}
+}
+\subfigure[Temperature at $x=0.5$ plane]
+{
+    \includegraphics[width=7cm]{./3/xHalf.png}
+}
+\caption{Comparison of center temperature with analytical solution} \label{Fig.3compare}
+\end{figure}
+
+
+\newpage
+\section{MacCormack Method for Burgers Eequation}
+Solve linearized  Burgers equation $u_{t}+cu_{x}=\mu u_{xx}$, $c=0.5$, $\mu=0.02$.
+
+Initial condition $u(x,0)=0$, $0\leq  x \leq 1$.
+
+Boundary condition $u(0,t)=100$, $u(1,t)=0$.
+
+Choose $\Delta x=0.02$ and $\Delta t=0.001$.
+
+The exact solution for steady-state is
+\begin{equation}
+u(x)=100\frac{1-\exp[25(x-1)]}{1-\exp(-25)}
+\end{equation}
+
+Use MacCormack method, discretization is
+\begin{equation}
+    \begin{split}
+& Predictor:  \overline{u_{j}^{n+1}}=u_{j}^{n}-c\frac{\Delta t}{\Delta x}(u_{j+1}^{n}-u_{j}^{n})+\frac{\mu \Delta t}{(\Delta x)^{2}}(u_{j+1}^{n}-2u_{j}^{n}+u_{j-1}^{n}) \\
+& Corrector:  u_{j}^{n+1}=\frac{1}{2}[u_{j}^{n}+\overline{u_{j}^{n+1}}-c\frac{\Delta t}{\Delta x}(\overline{u_{j}^{n+1}}-\overline{u_{j-1}^{n+1}})+\frac{\mu \Delta t}{(\Delta x)^{2}}(\overline{u_{j+1}^{n+1}}-2\overline{u_{j}^{n+1}}+\overline{u_{j-1}^{n+1}})] \\
+    \end{split}
+\end{equation}
+
+Here is the main code snippets:
+\lstinputlisting[language=Fortran]{./codes/4_2_snips.f90}
+
+The results shown in Fig.\ref{Fig.4}.
+\begin{figure}[htbp]
+\centering
+{
+    \includegraphics[width=9cm]{./4/4.png}
+}
+\caption{MacCormack method for linearized Burgers equation ($N_{x}=50$)} \label{Fig.4}
+\end{figure}
+
+
+
+%----------------------------------------------------------------------------------------------------------------------------------------------------------
+%\bibliography{Bib/citations}
+%----------------------------------------------------------------------------------------------------------------------------------------------------------
+\end{CJK} % 结束中文环境
+\end{document}
