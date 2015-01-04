@@ -31,19 +31,26 @@
 
 ###HKUST MECH5230
 
-*Problem 1
+* Problem 1
+
 Forward Time Central Space (FTCS) Scheme
+
 Alternating Direction Explicit (ADE) Scheme
 
-*Problem 2
+* Problem 2
+
 Non-uniform Grid
+
 Coordinate Transformation
+
 Crank-Nicolson Method
 
-*Problem 3
+* Problem 3
+
 2D Steady-state Heat Equation
 
-*Problem 4
+* Problem 4
+
 MacCormack Method for Burgers Eequation
 
 ## Licence
