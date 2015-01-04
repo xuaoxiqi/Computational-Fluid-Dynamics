@@ -81,40 +81,36 @@ def mac():
   
 #Show results
 
-    plt.plot(X,rho,'ro-',label="MacCormack Scheme",linewidth=1)
+    plt.plot(X,rho,'ro-',label="Numerical Solution",linewidth=1)
     #plt.plot(X,pre_rho,'k--',label="Exact Solution")
     plt.xlabel(r'$X$')
     plt.ylabel(r'$\rho$')   
-    plt.title('Quasi 1D Nozzle Flows'+' (Density)')
+    plt.title('Quasi One_Dimensional Nozzle Flows'+'(Density)')
     plt.legend(prop={"size":12})
-    plt.savefig('1_rho')
     plt.show()
     
-    plt.plot(X,Te,'ro-',label="MacCormack Scheme",linewidth=1)
+    plt.plot(X,Te,'ro-',label="Numerical Solution",linewidth=1)
     #plt.plot(X,pre_Te,'k--',label="Exact Solution")
     plt.xlabel(r'$X$')
     plt.ylabel(r'$T$')   
-    plt.title('Quasi 1D Nozzle Flows'+' (Temperature)')
+    plt.title('Quasi One_Dimensional Nozzle Flows'+'(Temperature)')
     plt.legend(prop={"size":12})
-    plt.savefig('1_T')
     plt.show()
 
-    plt.plot(X,P,'ro-',label="MacCormack Scheme",linewidth=1)
+    plt.plot(X,P,'ro-',label="Numerical Solution",linewidth=1)
     #plt.plot(X,pre_Te,'k--',label="Exact Solution")
     plt.xlabel(r'$X$')
     plt.ylabel(r'$P$')   
-    plt.title('Quasi 1D Nozzle Flows'+' (Pressure)')
+    plt.title('Quasi One_Dimensional Nozzle Flows'+'(Pressure)')
     plt.legend(prop={"size":12})
-    plt.savefig('1_P')
     plt.show()
 
-    plt.plot(X,Ma,'ro-',label="MacCormack Scheme",linewidth=1)
+    plt.plot(X,Ma,'ro-',label="Numerical Solution",linewidth=1)
     #plt.plot(X,pre_V,'k--',label="Exact Solution")
     plt.xlabel(r'$X$')
     plt.ylabel(r'$Ma$')   
-    plt.title('Quasi 1D Nozzle Flows'+' (Mach number)')
+    plt.title('Quasi One_Dimensional Nozzle Flows'+'(Mach number)')
     plt.legend(prop={"size":12})
-    plt.savefig('1_Ma')
     plt.show()
     
     return

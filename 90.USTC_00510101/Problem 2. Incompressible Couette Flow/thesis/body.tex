@@ -1,0 +1,389 @@
+
+\section{Numerical Formulation}
+The one-dimension governing equation for unsteady, incompressible, Couette flow is
+\begin{equation}
+\rho\frac{\partial u}{\partial t} = \mu\frac{\partial^2 u }{\partial y^2} \label{001}
+\end{equation}
+
+Define the following nondimensional variables:
+
+$u=\frac{u}{u_e}$  $y=\frac{y}{D}$ $t=\frac{t}{D/u_e}$
+
+Eq.\eqref{001} is nondimensionalized as follows:
+
+\begin{equation}
+\frac{\partial u}{\partial t} = \frac{\mu}{\rho u_e D} \frac{\partial^2 u}{\partial y^2}
+\end{equation}
+
+where,
+\begin{equation}
+\frac{\mu}{\rho u_e D}=\frac{1}{Re_D}
+\end{equation}
+
+Thus, the equation for which we will obtain a numerical solution is
+\begin{equation}
+\frac{\partial u}{\partial t}=\frac{1}{Re_D}\frac{\partial^2 u}{\partial y^2} \label{002}
+\end{equation}
+
+We choose to use implicit finite-difference technique(specifically, the Crank-Nicolson method) for this numerical solution.
+The finite-difference representation of Eq.\eqref{002} is
+
+\begin{equation}
+\frac{u^{n+1}_j-u^n_j}{\Delta t} = \frac{1}{Re_D}\frac{\frac{1}{2}(u^{n+1}_{j+1}+u^n_{j+1})+\frac{1}{2}(-2u^{n+1}_j+-2u^n_j)+\frac{1}{2}(u^{n+1}_{j-1}+u^n_{j-1})}{(\Delta y)^2}
+\end{equation}
+
+or
+
+\begin{equation}
+u^{n+1}_j = u^n_j + \frac{\Delta t}{2(\Delta y)^2 Re_D}(u^{n+1}_{j+1}+u^n_{j+1}-2u^{n+1}_j-2u^n_j+u^{n+1}_{j-1}+u^n_{j-1}) \label{003}
+\end{equation}
+
+Grouping all terms at time level $n+1$ in Eq.\eqref{003} on the left-hand side and factoring both sides appropriately, Eq.\eqref{003} becomes
+
+\begin{equation}
+\begin{split}
+&[-\frac{\Delta t}{2(\Delta y)^2 Re_D}]u^{n+1}_{j-1} + [1+\frac{\Delta t}{(\Delta y)^2 Re_D}]u^{n+1}_j + [-\frac{\Delta t}{2(\Delta y)^2 Re_D}]u^{n+1}_{j+1}\\
+& =[1-\frac{\Delta t}{(\Delta y)^2 Re_D}]u^n_j + \frac{\Delta t}{2(\Delta y)^2 Re_D}(u^n_{j+1}+u^n_{j-1})\\ \label{004}
+\end{split}
+\end{equation}
+
+Eq.\eqref{004} is of the form
+
+\begin{equation}
+Au^{n+1}_{j-1} + Bu^{n+1}_j + Cu^{n+1}_{j+1} = K_j \label{005}
+\end{equation}
+
+where,
+\begin{equation}
+A = C = -\frac{\Delta t}{2(\Delta y)^2 Re_D} \label{111}
+\end{equation}
+\begin{equation}
+B = 1+\frac{\Delta t}{(\Delta y)^2 Re_D} \label{112}
+\end{equation}
+\begin{equation}
+K_j = [1-\frac{\Delta t}{(\Delta y)^2 Re_D}]u^n_j + \frac{\Delta t}{2(\Delta y)^2 Re_D}(u^n_{j+1}+u^n_{j-1}) \label{113}
+\end{equation}
+
+For the convenient of calculation, we define$E = \frac{\Delta t}{Re_D (\Delta y)^2}$.
+
+\subsection{Dirichlet B.C.}
+From Dirichlet B.C., $u_1 = 0$, $u_{N+1}  = 1$. The system of equations represented by Eq.\eqref{005} represents $N-1$ equations.
+
+The first equation is
+\begin{equation}
+Au^{n+1}_1 + Bu^{n+1}_2 + Au^{n+1}_3 = K_2
+\end{equation}
+Since $u_1 = 0$, then we get $ Bu^{n+1}_2 + Au^{n+1}_3 = K_2$.
+
+The last equation in the system is
+\begin{equation}
+Au^{n+1}_{N-1} + Bu^{n+1}_N + Au^{n+1}_{N+1} = K_N
+\end{equation}
+Since $u_{N+1}=1$, then we get$Bu^{n+1}_N + Au^{n+1}_{N+1} = K_N - Au_e$
+
+Thus, the system of equations can be written in matrix form as
+\begin{equation}
+\begin{bmatrix}
+            B & A & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+            A & B & A & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & A & B & A & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & A & B & A & 0 & 0 & 0 & 0 \\
+            \dots \\
+            \dots \\
+            \dots \\
+            0 & 0 & 0 & 0 & 0 & 0 & A & B & A \\
+            0 & 0 & 0 & 0 & 0 & 0 & 0 & A & B
+\end{bmatrix}
+\begin{bmatrix}
+u^{n+1}_2 \\
+u^{n+1}_3 \\
+u^{n+1}_4 \\
+u^{n+1}_5 \\
+$\dots$ \\
+$\dots$ \\
+$\dots$ \\
+u^{n+1}_{N-1} \\
+u^{n+1}_N \\
+\end{bmatrix}
+=
+\begin{bmatrix}
+K_2 \\
+K_3 \\
+K_4 \\
+K_5 \\
+$\dots$ \\
+$\dots$ \\
+$\dots$ \\
+K_{N-1} \\
+K_N - Au_e \\
+\end{bmatrix}
+ \label{006}
+\end{equation}
+
+As the system represented by Eq.\eqref{006} is in tridiagonal form, it can be solved using Thomas' Algorithm, then we have the solution for $u^{n+1}_2, u^{n+1}_3,...,u^{n+1}_n$. These are the values of the velocities at the time step $n+1$. The whole process is then repeated for a number of time steps until the velocity profile converges to a steady state. Since Thomas Algorithm for equations of linear system is well-known even in basic Numerical Methods, no more discussion of this technique will be added in this report.
+
+\subsection{Neumann B.C.}
+As for Neumann B.C., $\frac{\partial u}{\partial y}_{N+1}=1$. The system of equations represented by Eq.\eqref{005} represents $N$ equations.
+
+The first equation is formulation as discussed in Dirichlet B.C., while the last equation in the system is different.
+
+Using second order Central Difference scheme, we have
+\begin{equation}
+\frac{\partial u}{\partial y}_{N+1}=\frac{u_{N+2}-u_N}{2 \Delta y}
+\end{equation}
+
+thus,
+\begin{equation}
+u_{N+2} = 2 \Delta y + u_N \label{007}
+\end{equation}
+
+Substituting Eq.\eqref{007} into
+
+\begin{equation}
+Au^{n+1}_N + Bu^{n+1}_{N+1} + Au^{n+1}_{N+2} = K_{N+1}
+\end{equation}
+
+Considering Eq.\eqref{111},Eq.\eqref{112},Eq.\eqref{113}
+
+\begin{equation}
+-2*E*u_N+2*E*u_{N+1} = 2*E*\Delta y
+\end{equation}
+
+Thus, the system of equations can be written in matrix form as
+\begin{equation}
+\begin{bmatrix}
+            B & A & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0\\
+            A & B & A & 0 & 0 & 0 & 0 & 0 & 0 & 0\\
+            0 & A & B & A & 0 & 0 & 0 & 0 & 0 & 0\\
+            0 & 0 & A & B & A & 0 & 0 & 0 & 0 & 0\\
+            \dots \\
+            \dots \\
+            \dots \\
+            0 & 0 & 0 & 0 & 0 & 0 & A & B & A & 0\\
+            0 & 0 & 0 & 0 & 0 & 0 & 0 & A & B & A\\
+            0 & 0 & 0 & 0 & 0 & 0 & 0 & -2*E & 2*E & 0
+\end{bmatrix}
+\begin{bmatrix}
+u^{n+1}_2 \\
+u^{n+1}_3 \\
+u^{n+1}_4 \\
+u^{n+1}_5 \\
+$\dots$ \\
+$\dots$ \\
+$\dots$ \\
+u^{n+1}_{N-1} \\
+u^{n+1}_N \\
+u^{n+1}_{N+1}
+\end{bmatrix}
+=
+\begin{bmatrix}
+K_2 \\
+K_3 \\
+K_4 \\
+K_5 \\
+$\dots$ \\
+$\dots$ \\
+$\dots$ \\
+K_{N-1} \\
+K_N \\
+2*E*\Delta y\\
+\end{bmatrix}
+ \label{006}
+\end{equation}
+
+\section{Computation Parameter}
+We choose to use 21 grid points across the flow, i.e.,in Fig.\eqref{fig:o}, $N+1=21$. Since $y$ is nondimensional, it varies from 0 to 1, hence $\Delta y = \frac{1}{20}$.
+\begin{figure}[h]
+\small
+\centering
+\includegraphics[width=8cm]{../img/field.png}
+\caption{Labeling of points for the grid} \label{fig:o}
+\end{figure}
+
+In terms of stability, since the Crank-Nicolson technique is unconditionally stable, there should be no difference in the behavior of the solution. For implicit method, $\Delta t = E Re_D (\Delta y)^2$, we could choose $E$ to be any value. Take $E=1$ and $Re_D=5000$ as an example, we have$\Delta t = 1*(5000)*(0.05)^2=12.5$.
+
+Analytical solution of Dirichlet Boundary Condition is
+\begin{equation}
+u=y+\sum_{n=1}^\infty\frac{2(-1)^n}{n\pi} e^{-n^2 \pi^2 t/Re} sin(n \pi y)
+\end{equation}
+
+Analytical solution of Neumann Boundary Condition is
+\begin{equation}
+u=y+\frac{8}{\pi ^2}\sum_{n=1}^\infty\frac{(-1)^n}{(2n-1)^2} e^{-(\frac{2n-1}{2})^2 \pi^2 t/Re} sin(\frac{2n-1}{2} \pi y)
+\end{equation}
+
+\section{Results and Discussion}
+The velocity is calculated in steps of time, compared with exact analytical solution. It is apparently that the velocity is changing most rapidly near the upper plates, as to be expected. The driving influence of the shear stress exerted by the upper plates is gradually communicated to the rest of the fluid, resulting in a final, steady-state profile, which is linear, as to be expected.
+\begin{figure}[htbp]
+\centering
+\subfigure[$t =12 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_12.png}
+\end{minipage}%
+}%
+\subfigure[$t =24 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_24.png}
+\end{minipage}%
+}%
+\subfigure[$t =36 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_36.png}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\subfigure[$t =48 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_48.png}
+\end{minipage}%
+}%
+\subfigure[$t =60 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_60.png}
+\end{minipage}%
+}%
+\subfigure[$t =90 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_90.png}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\subfigure[$t =120 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_120.png}
+\end{minipage}%
+}%
+\subfigure[$t =240 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_240.png}
+\end{minipage}%
+}%
+\subfigure[$t =360 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_360.png}
+\end{minipage}
+}
+\caption{Various Time steps$\Delta t$(Dirichlet B.C.)}
+\end{figure}
+
+
+It seems that as after $\Delta t=360$ steps, the error at $y=0$ increases(See Fig.\eqref{fig:e1}). Actually, if we add more grid points, the results will be fine(See Fig.\eqref{fig:e2}). On the other hand, this proves that the method is grid independent.
+\begin{figure}
+\small
+\centering
+\includegraphics[width=8cm]{../img/error_1.png}
+\caption{Grid interval $N=20$} \label{fig:e1}
+\end{figure}
+\begin{figure}
+\small
+\centering
+\includegraphics[width=8cm]{../img/error_2.png}
+\caption{Grid interval $N=50$} \label{fig:e2}
+\end{figure}
+
+
+It is also noticeable that by simply increasing the value of $\Delta t$(i.e., increasing $E$), a reduction in the number of time steps required to obtain a steady-state(Shown in Table.\eqref{tb01}). However, for a large-enough value $\Delta t$, the trend reverses itself(As $E$ increase further, more time steps are required to obtain steady state).
+
+\begin{table}[htbp]
+\centering
+\caption{Time steps required to reach steady state(Dirichlet B.C.)}
+\begin{tabular}{|c|c|c|c|c|c|}
+  \hline
+     E         &  1  & 5  & 10 & 20 & 40 \\
+  \hline
+  Time steps   & 240 & 50 & 36 & 60 & 120\\
+  \hline
+\end{tabular} \label{tb01}
+\end{table}
+
+Besides, the results of Neumann Boundary Condition are also listed below:
+\begin{figure}[htbp]
+\centering
+\subfigure[$t =12 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_212.png}
+\end{minipage}%
+}%
+\subfigure[$t =24 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_224.png}
+\end{minipage}%
+}%
+\subfigure[$t =36 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_236.png}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\subfigure[$t =48 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_248.png}
+\end{minipage}%
+}%
+\subfigure[$t =60 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_260.png}
+\end{minipage}%
+}%
+\subfigure[$t =90 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_290.png}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\subfigure[$t =120 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_2120.png}
+\end{minipage}%
+}%
+\subfigure[$t =240 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_2240.png}
+\end{minipage}%
+}%
+\subfigure[$t =360 \Delta t$]{
+\begin{minipage}[c]{0.3\textwidth}
+\centering
+\includegraphics[width=5cm]{../img/Couette_2360.png}
+\end{minipage}
+}
+\caption{Various Time steps$\Delta t$(Neumann B.C.)}
+\end{figure}
+
+
+
+%===================Bibliography==========================================
+\begin{thebibliography}{99}
+\addcontentsline{toc}{section}{References}
+\bibitem{1} Anderson,J.D., "Computational Fluid Dynamics: The Basics with Application", 2002.
+\bibitem{2} Jaan Kiusalaas, "Numerical Methods in Engineering with Python", 2005.
+\end{thebibliography} 

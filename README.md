@@ -2,14 +2,6 @@
 
 ## Code List
 
-### Quasi 1D Nozzle Flow
-
-* MacCormack Scheme
-
-### Incompressible Couette Flow
-
-* Crank-Nicolson Scheme
-
 ### Lid Driven Cavity Flow
 
 * Vorticity-Streamfunction Method
@@ -29,29 +21,39 @@
 * Roe Scheme
 * WENO Scheme
 
-###HKUST MECH5230
+### USTC 00510101
+
+* Problem 1. Quasi 1D Nozzle Flows
+
+	MacCormack Scheme
+
+* Problem 2. Incompressible Couette Flow
+
+	Crank-Nicolson Scheme
+
+### HKUST MECH5230
 
 * Problem 1
 
-Forward Time Central Space (FTCS) Scheme
+	Forward Time Central Space (FTCS) Scheme
 
-Alternating Direction Explicit (ADE) Scheme
+	Alternating Direction Explicit (ADE) Scheme
 
 * Problem 2
 
-Non-uniform Grid
+	Non-uniform Grid
 
-Coordinate Transformation
+	Coordinate Transformation
 
-Crank-Nicolson Method
+	Crank-Nicolson Method
 
 * Problem 3
 
-2D Steady-state Heat Equation
+	2D Steady-state Heat Equation
 
 * Problem 4
 
-MacCormack Method for Burgers Eequation
+	MacCormack Method for Burgers Eequation
 
 ## Licence
 

@@ -1,0 +1,472 @@
+
+
+\section{Subsonic-Supersonic Isentropic Nozzle Flow}
+
+\subsection{Formulation}
+
+The partial differential equation form of the continuity equation suitable for unsteady,quasi-one-dimensional flow is
+\begin{equation}
+\frac{\partial(\rho A)}{\partial t} + \rho A\frac{\partial V}{\partial x}+ \rho V\frac{\partial A}{\partial x}+ V A\frac{\partial \rho}{\partial x}=0
+\end{equation}
+
+The momentum equation appropriate for quasi-one-dimensional flow, written in nonconservation form is
+\begin{equation}
+\rho \frac{\partial V}{\partial t}+\rho V \frac{\partial V}{\partial x}=-R(\rho\frac{\partial T}{\partial x}+\frac{\partial \rho}{\partial x})
+\end{equation}
+
+The nonconservation form of the energy equation is
+\begin{equation}
+\rho c_v \frac{\partial T}{\partial t}+\rho V c_v \frac{\partial T}{\partial x} = - \rho R T (\frac{\partial V}{\partial x}+V\frac{\partial (lnA)}{\partial x})
+\end{equation}
+
+For nozzle flows, the flow-field variables are frequently expressed in terms of nondimensional variables,hence the particular form of the equations that will be most appropriate as well as convenient for the time-marching solution of quasi-one-dimensional nozzle flow is as follows:
+
+\begin{equation}
+Continuity: \frac{\partial \rho}{\partial t} = -\rho \frac{\partial V}{\partial x}- \rho V \frac{\partial (ln A)}{\partial x}-V\frac{\partial \rho}{\partial x}
+\end{equation}
+
+\begin{equation}
+Momentum: \frac{\partial V}{\partial t}=-V\frac{\partial V}{\partial x}-\frac{1}{\gamma}( \frac{\partial T}{\partial x}+\frac{T}{\rho}\frac{\partial \rho}{\partial x} )
+\end{equation}
+
+\begin{equation}
+Energy: \frac{\partial T}{\partial t} = -V\frac{\partial T}{\partial x}-(\gamma -1)T( \frac{\partial V}{\partial x}+V\frac{\partial(ln A)}{\partial x} )
+\end{equation}
+
+In terms of the nondimensional velocity and temperature, the Mach number is given by
+\begin{equation}
+M = \frac{V}{\sqrt {T}}
+\end{equation}
+
+\subsection{MacCormack Scheme}
+
+At a given grid point at a given time step, the stability constraint exists on this system is written as
+\begin{equation}
+(\Delta t)^t_i = C \frac{\Delta x}{a^t_i+V^t_i}
+\end{equation}
+Calculate $(\Delta t)^t_i$ at all grid points(i=1,,,n), and then choose the minimum value for use, that is
+\begin{equation}
+\Delta t =minimum( \Delta t^t_1, \Delta t^t_2,,, \Delta t^t_i,,,\Delta t^t_N )
+\end{equation}
+
+First, consider the predictor step. Set up the spatial derivative as forward differences(i=1,,,n-1)
+
+\begin{equation}
+(\frac{\partial \rho}{\partial t})^t_i=-\rho^t_i \frac{V^t_{i+1}-V^t_i}{\Delta x}-\rho^t_i V^t_i \frac{ln A_{i+1}-ln A_i}{\Delta x} -V^t_i \frac{\rho^t_{i+1} - \rho^t_i}{\Delta x}
+\end{equation}
+
+\begin{equation}
+(\frac{\partial V}{\partial t})^t_i=-V^t_i \frac{V^t_{i+1}-V^t_i}{\Delta x}-\frac{1}{\gamma}( \frac{T^t_{i+1}-T^t_i}{\Delta x}+\frac{T^t_i}{\rho^t_i}\frac{\rho^t_{i+1}-\rho^t_i}{\Delta x}  )
+\end{equation}
+
+\begin{equation}
+(\frac{\partial T}{\partial t})^t_i = -V^t_i \frac{T^t_{i+1}-T^t_i}{\Delta x}-(\gamma-1)T^t_i(\frac{V^t_{i+1}-V^t_i}{\Delta x}+V^t_i \frac{ln A_{i+1} - ln A_i}{\Delta x})
+\end{equation}
+
+Hence, the predicted values of $\rho$, $V$ and $T$ (i=1,,,n-1) is
+\begin{equation}
+\rho^{t+\Delta t}_i = \rho^t_i + (\frac{\partial \rho}{\partial t})^t_i \Delta t
+\end{equation}
+
+\begin{equation}
+V^{t+\Delta t}_i = V^t_i + (\frac{\partial V}{\partial t})^t_i \Delta t
+\end{equation}
+
+\begin{equation}
+T^{t+\Delta t}_i = T^t_i + (\frac{\partial T}{\partial t})^t_i \Delta t
+\end{equation}
+
+Next is the corrector step, replace the spatial derivatives with rearward differences, using the predicted quantities.
+
+\begin{equation}
+(\frac{\partial \rho}{\partial t})^{t+\Delta t}_i=-\rho^{t+\Delta t}_i \frac{V^{t+\Delta t}_i-V^{t+\Delta t}_{i-1}}{\Delta x}-\rho^{t+\Delta t}_i V^{t+\Delta t}_i \frac{ln A_{i+1}-ln A_i}{\Delta x} -V^{t+\Delta t}_i \frac{\rho^{t+\Delta t}_{i+1} - rho^{t+\Delta t}_i}{\Delta x}
+\end{equation}
+
+\begin{equation}
+(\frac{\partial V}{\partial t})^{t+\Delta t}_i=-V^{t+\Delta t}_i \frac{V^{t+\Delta t}_i-V^{t+\Delta t}_{i-1}}{\Delta x}-\frac{1}{\gamma}( \frac{T^{t+\Delta t}_i-T^{t+\Delta t}_{i-1}}{\Delta x}+\frac{T^{t+\Delta t}_i}{\rho^{t+\Delta t}_i} \frac{\rho^{t+\Delta t}_i-\rho^{t+\Delta t}_{i-1}}{\Delta x}  )
+\end{equation}
+
+\begin{equation}
+(\frac{\partial T}{\partial t})^{t+\Delta t}_i = -V^{t+\Delta t}_i \frac{T^{t+\Delta t}_i-T^{t+\Delta t}_{i-1}}{\Delta x}-(\gamma-1)T^{t+\Delta t}_i(\frac{V^t_i-V^{t+\Delta t}_{i-1}}{\Delta x}+V^{t+\Delta t}_i \frac{ln A_i - ln A_{i-1}}{\Delta x})
+\end{equation}
+
+The average time derivatives are given by
+\begin{equation}
+(\frac{\partial \rho}{\partial t})_{av}=0.5( (\frac{\partial \rho}{\partial t})^t_i + ( \frac{\partial \rho}{\partial t})^{t+\Delta t}_i  )
+\end{equation}
+
+\begin{equation}
+(\frac{\partial V}{\partial t})_{av}=0.5( (\frac{\partial V}{\partial t})^t_i + ( \frac{\partial V}{\partial t})^{t+\Delta t}_i  )
+\end{equation}
+
+\begin{equation}
+(\frac{\partial T}{\partial t})_{av}=0.5( (\frac{\partial T}{\partial t})^t_i + ( \frac{\partial T}{\partial t})^{t+\Delta t}_i  )
+\end{equation}
+
+Finally, for the corrected values of the flow-field variables at time $t+\Delta t$
+\begin{equation}
+\rho^{t+\Delta t}_i = \rho^t_i + (\frac{\partial \rho}{\partial t})^t_{av} \Delta t
+\end{equation}
+
+\begin{equation}
+V^{t+\Delta t}_i = V^t_i + (\frac{\partial V}{\partial t})^t_{av} \Delta t
+\end{equation}
+
+\begin{equation}
+T^{t+\Delta t}_i = T^t_i + (\frac{\partial T}{\partial t})^t_{av} \Delta t
+\end{equation}
+
+\subsection{Boundary Conditions}
+
+\textbf{Nozzle Shape and Initial Conditions:}
+
+The nozzle shape  $S(x)=1+2.2(x-1.5)^2$   $0<=x<=3$
+as $\rho$ and $T$ decrease and $V$ increases as the flow expands through the nozzle, for simplicity, assume linear variations of the flow-field variables as a function of x.
+At time $t=0$
+\begin{equation}
+\rho = 1-0.3146x
+\end{equation}
+
+\begin{equation}
+T = 1-0.2134x
+\end{equation}
+
+\begin{equation}
+V = (0.1+1.09)T^{\frac{1}{2}}
+\end{equation}
+
+\textbf{Subsonic Inflow Boundary:}
+\begin{equation}
+V_1=2V_2-V_3
+\end{equation}
+
+\begin{equation}
+\rho_1 = 1
+\end{equation}
+
+\begin{equation}
+T_1 = 1
+\end{equation}
+
+\textbf{Supersonic Outflow Boundary:}
+
+Allow all flow-field variables to float and use linear extrapolation based on the flow-field values at the internal points,
+\begin{equation}
+V_N=2V_{N-1}-V_{N-2}
+\end{equation}
+
+\begin{equation}
+\rho_N=2\rho_{N-1}-\rho_{N-2}
+\end{equation}
+
+\begin{equation}
+T_N=2T_{N-1}-T_{N-2}
+\end{equation}
+
+\subsection{Results}
+\begin{figure}[htbp]
+\centering
+\subfigure[Density]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/1rho.png}
+\end{minipage}%
+}%
+\subfigure[Temperature]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/1T.png}
+\end{minipage}
+}
+\centering
+\subfigure[Pressure]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/1P.png}
+\end{minipage}%
+}%
+\subfigure[Mach Number]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/1Ma.png}
+\end{minipage}
+}
+\caption{Subsonic-Supersonic Flow(Governing Equation in Non-Conservation Form)}
+\end{figure}
+
+
+\section{Subsonic-Supersonic Isentropic Nozzle Flow: Governing Equations in Conservation Form}
+
+\subsection{Formulation}
+
+The nondimensional conservation form of the continuity, momentum, and energy equations for quasi-one-dimensional flow can be expressed in a generic form. Define the elements of the solutions vector $U$, and the flux vector $F$, and the source term $J$ as follows:
+\begin{equation}
+U_1 = \rho A
+\end{equation}
+
+\begin{equation}
+U_2 = \rho A V
+\end{equation}
+
+\begin{equation}
+U_3 = \rho(\frac{e}{\gamma-1}+\frac{\gamma}{2}V^2)A
+\end{equation}
+
+\begin{equation}
+F_1 = \rho A V
+\end{equation}
+
+\begin{equation}
+F_2 = \rho A V^2 +\frac{1}{\gamma} p A
+\end{equation}
+
+\begin{equation}
+F_3 = \rho ( \frac{e}{\gamma -1} +\frac{\gamma}{2} V^2) V A + p A V
+\end{equation}
+
+\begin{equation}
+J_2 = \frac{1}{\gamma} p \frac{\partial A}{\partial x}
+\end{equation}
+
+Thus
+\begin{equation}
+\frac{\partial U_1}{\partial t} = -\frac{\partial F_1}{\partial x}
+\end{equation}
+
+\begin{equation}
+\frac{\partial U_2}{\partial t} = -\frac{\partial F_2}{\partial x}+J_2
+\end{equation}
+
+\begin{equation}
+\frac{\partial U_3}{\partial t} = -\frac{\partial F_3}{\partial x}
+\end{equation}
+
+To obtain the primitive variables ($\rho, V, T, etc.$), decode the elements $U_1, U_2, U_3$ as follows:
+\begin{equation}
+\rho = \frac{U_1}{A}
+\end{equation}
+
+\begin{equation}
+V = \frac{U_2}{U_1}
+\end{equation}
+
+\begin{equation}
+T=e=(\gamma-1)(\frac{U_3}{U_1}-\frac{\gamma}{2}V^2)
+\end{equation}
+
+\begin{equation}
+p = \rho T
+\end{equation}
+
+Pure form of the flux terms:
+\begin{equation}
+F_1 = U_2
+\end{equation}
+
+\begin{equation}
+F_2 = \frac{U^2_2}{U_1}+\frac{\gamma -1}{\gamma}( U_3-\frac{\gamma}{2} \frac{U_2^2}{U_1} )
+\end{equation}
+
+\begin{equation}
+F_3 = \gamma \frac{U_2 U_3}{U_1} - \frac{\gamma(\gamma -1)}{2}\frac{U_2^3}{U_1^2}
+\end{equation}
+
+\begin{equation}
+J_2 = \frac{\gamma -1}{\gamma -1}(U_3-\frac{\gamma}{2}\frac{U_2^2}{U_1}) \frac{\partial (ln A)}{\partial x}
+\end{equation}
+
+\subsection{B.C and I.C.}
+
+\textbf{B.C.:}
+
+\begin{equation}
+U_{1_{(i=1)}} = S_{i=1}
+\end{equation}
+
+\begin{equation}
+U_{2_{(i=1)}} = 2 U_{2_{(i=2)}} U_{2_{(i=3)}}
+\end{equation}
+
+\begin{equation}
+U_3 = U_1( \frac{T}{\gamma -1}+\frac{\gamma}{2}V^2 )
+\end{equation}
+
+\begin{equation}
+(U_1)_N = 2 (U_1)_{N-1} - (U_1)_{N-2}
+\end{equation}
+
+\begin{equation}
+(U_2)_N = 2 (U_2)_{N-1} - (U_2)_{N-2}
+\end{equation}
+
+\begin{equation}
+(U_3)_N = 2 (U_3)_{N-1} - (U_3)_{N-2}
+\end{equation}
+
+\textbf{I.C.:}
+
+For ($0<=x<=0.5$):
+\begin{equation}
+\rho = 1.0; T =1.0
+\end{equation}
+
+For ($0.5<=x<=1.5$):
+\begin{equation}
+\rho = 1.0-0.366(x-0.5); T =1.0-0.167(x-0.5)
+\end{equation}
+
+For ($1.5<=x<=3.5$):
+\begin{equation}
+\rho = 0.634-0.3879(x-1.5); T =0.833-0.3507(x-1.5)
+\end{equation}
+
+\begin{equation}
+V = \frac{0.59}{\rho A}
+\end{equation}
+
+The shape of the nozzle is the same as discussed in previous case.
+
+\subsection{Results}
+\begin{figure}[htbp]
+\centering
+\subfigure[Density]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/2rho.png}
+\end{minipage}%
+}%
+\subfigure[Temperature]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/2T.png}
+\end{minipage}
+}
+\centering
+\subfigure[Pressure]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/2P.png}
+\end{minipage}%
+}%
+\subfigure[Mach Number]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/2Ma.png}
+\end{minipage}
+}
+\caption{Subsonic-Supersonic Flow(Governing Equation in Conservation Form)}
+\end{figure}
+
+\section{Shock Capture}
+In this section, we will use the conservation form of the governing equations to numerically capture normal shock waves within the nozzle. When we practice the art of shock capturing, the smoothing and stabilization of the solution by the addition of some type of numerical dissipation is absolutely necessary. Add artificial viscosity as follows:
+\begin{equation}
+S^t_i = \frac{C_x|(p)^t_{i+1}-2(p)^t_i+(p)^t_{i-1}|}{(p)^t_{i+1}+2(p)^t_i+(p)^t_{i-1}}(U^t_{i+1}-2U^t_i+U^t_{i-1})
+\end{equation}
+
+\subsection{B.C. and I.C.}
+
+\textbf{B.C.:}
+\begin{equation}
+(U_1)_N = 2(U_1)_{N-1} - (U_1)_{N-2}
+\end{equation}
+
+\begin{equation}
+(U_2)_N = 2(U_2)_{N-1} - (U_2)_{N-2}
+\end{equation}
+
+\begin{equation}
+V_N = \frac{(U_2)_N}{(U_1)_N}
+\end{equation}
+
+\begin{equation}
+(U_3)_N = \frac{0.6784 S}{\gamma -1} + \frac{\gamma}{2}(U_2)_N V_N
+\end{equation}
+
+\textbf{I.C.:}
+
+For ($0<=x<=0.5$):
+\begin{equation}
+\rho = 1.0; T =1.0
+\end{equation}
+
+For ($0.5<=x<=1.5$):
+\begin{equation}
+\rho = 1.0-0.366(x-0.5); T =1.0-0.167(x-0.5)
+\end{equation}
+
+For ($1.5<=x<=2.1$):
+\begin{equation}
+\rho = 0.634-0.702(x-1.5); T =0.833-0.4908(x-1.5)
+\end{equation}
+
+For ($2.1<=x<=3.0$):
+\begin{equation}
+\rho = 0.5892+0.10228(x-2.1); T =0.93968-0.0622(x-2.1)
+\end{equation}
+
+\subsection{Results}
+Compare the shock capturing numerical results through the nozzle, the addition of artificial viscosity(\textbf{Right Column}) eliminated the oscillations that were encountered with no artificial viscosity(\textbf{Left Column}).
+
+
+\begin{figure}[htbp]
+\centering
+\subfigure[Density]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/4rho.png}
+\end{minipage}%
+}%
+\subfigure[Density]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/3rho.png}
+\end{minipage}
+}
+\centering
+\subfigure[Pressure]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/4P.png}
+\end{minipage}%
+}%
+\subfigure[Pressure]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/3P.png}
+\end{minipage}
+}
+\centering
+\subfigure[Temperature]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/4T.png}
+\end{minipage}%
+}%
+\subfigure[Temperature]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/3T.png}
+\end{minipage}
+}
+\centering
+\subfigure[Mach Number]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/4Ma.png}
+\end{minipage}%
+}%
+\subfigure[Mach Number]{
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\includegraphics[width=7cm]{../img/3Ma.png}
+\end{minipage}
+}
+\caption{Shock Capturing}
+\end{figure}
+
+%===================Bibliography==========================================
+\begin{thebibliography}{99}
+\addcontentsline{toc}{section}{References}
+\bibitem{1} Anderson,J.D., "Computational Fluid Dynamics: The Basics with Application", 2002.
+\bibitem{2} Jaan Kiusalaas, "Numerical Methods in Engineering with Python", 2005.
+\end{thebibliography} 
